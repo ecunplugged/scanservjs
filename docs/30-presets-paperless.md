@@ -4,6 +4,9 @@ Dieser Fork von sbs20/scanservjs ergänzt eine direkt sichtbare Papierformatausw
 serverseitig gespeicherte Scan-Aufträge und die Paperless-ngx REST-API.
 Die neuen Bedienelemente sind auf Deutsch und Englisch verfügbar.
 
+Für eine direkte Debian-Installation einschließlich Updates siehe das
+[Installationsskript](31-debian-installer.md).
+
 ## Installation auf Raspberry Pi / Linux mit Docker
 
 Die offiziellen `sbs20/scanservjs`-Images enthalten die Änderungen dieses Forks

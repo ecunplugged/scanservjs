@@ -3,6 +3,8 @@
 Dieser Fork ergänzt **A4-Auswahl, gespeicherte Scan-Voreinstellungen und Paperless-ngx**.
 Die [Einrichtung und Installationsanleitung](docs/30-presets-paperless.md) beschreibt die neuen Funktionen.
 Die unten verlinkten Upstream-Images enthalten diese Erweiterungen nicht.
+Für Debian gibt es ein [Installations- und Update-Skript](docs/31-debian-installer.md),
+das Abhängigkeiten installiert und den systemd-Dienst einrichtet.
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/sbs20/scanservjs/build.yml?branch=master&style=for-the-badge)](https://github.com/sbs20/scanservjs/actions)
 [![Code QL Status](https://img.shields.io/github/actions/workflow/status/sbs20/scanservjs/codeql-analysis.yml?branch=master&style=for-the-badge&label=CodeQL)](https://github.com/sbs20/scanservjs/actions)
