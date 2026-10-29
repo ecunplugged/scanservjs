@@ -206,3 +206,12 @@ describe('Fujitsu A4 media geometry', () => {
     assert(request.params.height > 296);
   });
 });
+
+describe('Legacy dynamic-lineart form regression', () => {
+  it('repairs a boolean mode stored by the old dynamic-lineart selector', () => {
+    const device = Device.from(FileInfo.create('test/resource/scanimage-a12-adf.txt').toText());
+    const context = new Context(config, [device], new UserOptions());
+    const request = new Request(context, { params: { deviceId: device.id, mode: true } });
+    assert.strictEqual(request.params.mode, device.features['--mode'].default);
+  });
+});

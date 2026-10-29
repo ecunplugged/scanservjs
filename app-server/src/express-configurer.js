@@ -61,6 +61,25 @@ function formatForLog(req) {
 const { store, paperless } = require('./job-services');
 const EndpointSpecs = [
   {
+    method: 'get', path: '/api/v1/authentication',
+    callback: async (req, res) => res.send(store.authentication(config.users))
+  },
+  {
+    method: 'put', path: '/api/v1/authentication',
+    callback: async (req, res) => res.send(await store.configureAuthentication(req.body, config.users))
+  },
+  {
+    method: 'post', path: '/api/v1/presets/:id/scan',
+    callback: async (req, res) => {
+      const preset = store.data.presets.find(p => p.id === req.params.id);
+      if (!preset) {
+        res.status(404).send({ message: 'Preset no longer exists' });
+        return;
+      }
+      res.send(await api.scan({ ...preset.request, params: { ...preset.request.params }, index: 1 }));
+    }
+  },
+  {
     method: 'get', path: '/api/v1/presets',
     callback: async (req, res) => res.send(store.data.presets)
   },
@@ -192,7 +211,7 @@ module.exports = class ExpressConfigurer {
   constructor(app) {
     this.app = app;
     this.app.use(cors());
-    
+
     try {
       fs.mkdirSync(config.outputDirectory, { recursive: true });
       fs.mkdirSync(config.thumbnailDirectory, { recursive: true });
@@ -208,12 +227,20 @@ module.exports = class ExpressConfigurer {
    * @returns {ExpressConfigurer}
    */
   basicAuth() {
-    if (Object.keys(config.users).length > 0) {
-      this.app.use(basicAuth({
-        users: config.users,
-        challenge: true,
-      }));
-    }
+    const authenticate = basicAuth({
+      authorizeAsync: true,
+      authorizer: (username, password, callback) => {
+        store.authorize(username, password, config.users)
+          .then(valid => callback(null, valid)).catch(() => callback(null, false));
+      },
+      challenge: true
+    });
+    this.app.use((req, res, next) => {
+      if (store.authentication(config.users).enabled) {
+        return authenticate(req, res, next);
+      }
+      next();
+    });
     return this;
   }
 
@@ -234,16 +261,16 @@ module.exports = class ExpressConfigurer {
   endpoints() {
     EndpointSpecs.forEach(spec => {
       this.app[spec.method](spec.path, async (req, res) => {
-        log.info(spec.path === '/api/v1/paperless' ? { method: req.method, path: req.path } : formatForLog(req));
+        log.info(['/api/v1/paperless', '/api/v1/authentication'].includes(spec.path) ? { method: req.method, path: req.path } : formatForLog(req));
         try {
-          if (spec.method === 'put' && spec.path === '/api/v1/paperless' && req.headers.origin
+          if (spec.method === 'put' && ['/api/v1/paperless', '/api/v1/authentication'].includes(spec.path) && req.headers.origin
             && new URL(req.headers.origin).host !== req.get('host')) {
-            res.status(403).send({ message: 'Paperless setup requires a same-host request' });
+            res.status(403).send({ message: 'Setup requires a same-host request' });
             return;
           }
           await spec.callback(req, res);
         } catch (error) {
-          sendError(res, 500, error);
+          sendError(res, error.statusCode || 500, error);
         }
       });
     });

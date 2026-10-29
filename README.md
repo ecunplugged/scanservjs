@@ -1,7 +1,8 @@
 # scanservjs
 
-Dieser Fork ergänzt **A4-Auswahl, gespeicherte Scan-Voreinstellungen und Paperless-ngx**.
+Dieser Fork ergänzt **ein Scan-Dashboard, A4-Auswahl, gespeicherte Scan-Voreinstellungen und Paperless-ngx**.
 Die [Einrichtung und Installationsanleitung](docs/30-presets-paperless.md) beschreibt die neuen Funktionen.
+Die [Dashboard-Anleitung](docs/32-dashboard.md) beschreibt Direkt-Scans, Voreinstellungsverwaltung und die standardmäßig ausgeschaltete Anmeldung.
 Die unten verlinkten Upstream-Images enthalten diese Erweiterungen nicht.
 Für Debian gibt es ein [Installations- und Update-Skript](docs/31-debian-installer.md),
 das Abhängigkeiten installiert und den systemd-Dienst einrichtet.

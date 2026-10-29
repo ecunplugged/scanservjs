@@ -42,7 +42,7 @@ export default class ManifestBuilder {
       background_color : this.dark ? '#000000' : '#FFFFFF',
       display : 'standalone',
       scope : '/',
-      start_url : '/#/scan',
+      start_url : '/#/dashboard',
       name : 'scanservjs',
       short_name : 'scanservjs',
       description : 'SANE scanner nodejs web ui',

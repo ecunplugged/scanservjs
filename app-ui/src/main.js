@@ -15,6 +15,8 @@ import Files from './components/Files.vue';
 import Scan from './components/Scan.vue';
 import Settings from './components/Settings.vue';
 import About from './components/About.vue';
+import Dashboard from './components/Dashboard.vue';
+import Presets from './components/Presets.vue';
 
 const datetimeFormats = {};
 for (const locale of Constants.Locales) {
@@ -78,13 +80,18 @@ const router = createRouter({
     { path: '/files', component: Files },
     { path: '/settings', component: Settings },
     { path: '/scan', component: Scan },
-    { path: '/', component: Scan }
+    { path: '/presets', component: Presets },
+    { path: '/presets/new', component: Scan, props: { managePreset: true } },
+    { path: '/presets/:id/edit', component: Scan, props: route => ({ managePreset: true, editPresetId: route.params.id }) },
+    { path: '/dashboard', component: Dashboard },
+    { path: '/', redirect: '/dashboard' },
+    { path: '/:pathMatch(.*)*', redirect: '/dashboard' }
   ]
 });
 
-createApp(App)
+const app = createApp(App)
   .use(vuetify)
   .use(router)
   .use(i18n)
-  .use(VueToastr)
-  .mount('#app');
+  .use(VueToastr);
+router.isReady().then(() => app.mount('#app'));

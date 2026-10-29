@@ -187,11 +187,16 @@
   "jobs": {
     "load": "Abrufen",
     "preset": "Scan-Voreinstellung",
-    "name": "Name (gleicher Name überschreibt)",
+    "name": "Name",
     "save": "Speichern",
     "delete": "Voreinstellung löschen",
     "saved": "Gespeichert",
-    "device-missing": "Der Scanner dieser Voreinstellung ist nicht verfügbar."
+    "device-missing": "Der Scanner dieser Voreinstellung ist nicht verfügbar.",
+    "manage": "Voreinstellungen",
+    "new": "Neue Voreinstellung",
+    "edit": "Bearbeiten",
+    "cancel": "Abbrechen",
+    "confirm-delete": "Voreinstellung „{0}“ löschen?"
   },
   "paperless": {
     "title": "Paperless-ngx einrichten",
@@ -204,5 +209,23 @@
     "success": "Paperless-Import bestätigt.",
     "pending": "Paperless verarbeitet noch. Lokale Datei bleibt erhalten; Status in der Dateiliste erneut prüfen.",
     "disabled": "Paperless ist deaktiviert."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "Papier einlegen und eine Voreinstellung antippen.",
+    "manage": "Voreinstellungen verwalten",
+    "manual": "Manuelles Scannen",
+    "start": "Jetzt scannen",
+    "empty": "Noch keine Voreinstellungen gespeichert.",
+    "completed": "Scan abgeschlossen:",
+    "retry": "Erneut versuchen"
+  },
+  "authentication": {
+    "title": "Anmeldung",
+    "enabled": "Anmeldung erforderlich",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "password-saved": "Passwort gespeichert. Leer lassen, um es beizubehalten.",
+    "description": "Standardmäßig ist keine Anmeldung erforderlich. Bei Bedarf Benutzername und Passwort festlegen und die Anmeldung aktivieren."
   }
 }

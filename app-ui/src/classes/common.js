@@ -1,11 +1,19 @@
 export default {
   async fetch(url, options) {
     const response = await fetch(url, options);
-    const json = await response.json();
-    if (response.ok) {
-      return json;
+    const text = await response.text();
+    let data;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      if (response.ok) {
+        throw new Error('Invalid server response');
+      }
     }
-    throw JSON.stringify(json);
+    if (!response.ok) {
+      throw new Error(data && data.message || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    return data;
   },
 
   clone(obj) {

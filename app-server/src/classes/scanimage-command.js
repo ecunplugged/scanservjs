@@ -47,11 +47,12 @@ module.exports = class ScanimageCommand {
    * @param {string} deviceId
    * @returns {string}
    */
-  features(deviceId) {
-    return new CommandBuilder(this.config.scanimage)
-      .arg('-d', deviceId)
-      .arg('-A')
-      .build();
+  features(deviceId, source) {
+    const command = new CommandBuilder(this.config.scanimage).arg('-d', deviceId);
+    if (source) {
+      command.arg('--source', source);
+    }
+    return command.arg('-A').build();
   }
 
   /**

@@ -9,7 +9,7 @@
           <v-btn small color="primary" text @click.prevent="next">{{ $t('batch-dialog.btn-next') }}</v-btn>
           <v-btn v-if="onFinish" small color="green" text @click.prevent="finish">{{ $t('batch-dialog.btn-finish') }}</v-btn>
           <v-btn v-if="onRescan" small text @click.prevent="rescan">{{ $t('batch-dialog.btn-rescan') }}</v-btn>
-          <v-btn small text color="warning" @click.prevent="show = false">{{ $t('batch-dialog.btn-cancel') }}</v-btn>
+          <v-btn small text color="warning" @click.prevent="cancel">{{ $t('batch-dialog.btn-cancel') }}</v-btn>
         </div>
         <v-img v-if="image" :src="'data:image/jpeg;base64,' + image" contain />
       </v-card-text>
@@ -30,6 +30,7 @@ export default {
       show: false,
       onFinish: null,
       onNext: null,
+      onCancel: null,
       onRescan: null,
     };
   },
@@ -37,7 +38,14 @@ export default {
   methods: {
     _onKeys(event) {
       if (event.keyCode === Constants.Keys.enter) {
-        this.ok();
+        this.next();
+      }
+    },
+
+    cancel() {
+      this.show = false;
+      if (this.onCancel) {
+        this.onCancel();
       }
     },
 
@@ -68,6 +76,7 @@ export default {
       this.onFinish = options.onFinish;
       this.onRescan = options.onRescan;
       this.onNext = options.onNext;
+      this.onCancel = options.onCancel;
       this.show = true;
     }
   }

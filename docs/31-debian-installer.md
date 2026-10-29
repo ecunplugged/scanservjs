@@ -33,11 +33,12 @@ Das Skript:
    seinen Status. Der Dienst läuft als Benutzer `scanservjs`, nicht als root.
 
 Bei einer neuen Installation ist die Oberfläche unter
-`http://<IP-des-Debian-Rechners>:8080` erreichbar. Der Benutzername ist `scanner`.
-Ein zufälliges Passwort wird am Ende angezeigt und zusätzlich unter
-`/etc/scanservjs/install-credentials.txt` gespeichert (nur für root lesbar).
-Diese Zugangsdaten gelten für die lokale Weboberfläche; die Paperless-Zugangsdaten
-werden anschließend in der Oberfläche eingerichtet.
+`http://<IP-des-Debian-Rechners>:8080` erreichbar. Sie öffnet zuerst das Dashboard.
+Die Anmeldung ist standardmäßig ausgeschaltet. Bei Bedarf in der Weboberfläche
+unter **Einstellungen → Anmeldung** Benutzername und Passwort festlegen und
+**Anmeldung erforderlich** aktivieren. Die Einstellung bleibt bei Updates
+bestehen. Passwörter aus dieser Einrichtung werden als gesalzener Hash gespeichert.
+Paperless-Zugangsdaten werden separat in der Oberfläche eingerichtet.
 
 Bestehende `config.local.js` und Zugangsdaten werden nicht ersetzt.
 Voreinstellungen und Paperless-Einrichtung bleiben in

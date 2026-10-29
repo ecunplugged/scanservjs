@@ -9,12 +9,16 @@
     </transition>
 
     <navigation :app-color="appColor" />
+    <batch-dialog ref="batchDialog" />
 
     <v-main>
       <v-container fluid>
+        <v-alert v-if="scanJob.error" type="error" class="mb-4" closable @click:close="scanJob.error = ''">
+          {{ scanJob.error }}
+        </v-alert>
         <router-view v-slot="{ Component }" @mask="mask" @notify="notify">
           <transition name="fade" mode="out-in" :duration="150">
-            <component :is="Component" />
+            <component :is="Component" :key="$route.fullPath" />
           </transition>
         </router-view>
       </v-container>
@@ -28,6 +32,8 @@ import Constants from './classes/constants';
 import ManifestBuilder from './classes/manifest-builder';
 import Storage from './classes/storage';
 import Navigation from './components/Navigation.vue';
+import BatchDialog from './components/BatchDialog.vue';
+import ScanJob from './classes/scan-job.js';
 import { useTheme } from 'vuetify';
 
 const storage = Storage.instance();
@@ -36,8 +42,13 @@ export default {
   name: 'App',
   components: {
     Navigation,
+    BatchDialog,
   },
   inject: ['toastr'],
+
+  provide() {
+    return { scanJob: this.scanJob, requestMask: add => this.mask(add) };
+  },
 
   setup() {
     const vuetifyTheme = useTheme();
@@ -61,6 +72,19 @@ export default {
 
   data() {
     return {
+      scanJob: new ScanJob({
+        mask: add => this.mask(add),
+        chooseBatch: response => new Promise(resolve => {
+          this.$refs.batchDialog.open({
+            message: this.$t(response.image ? 'scan.message:preview-of-page' : 'scan.message:turn-documents'),
+            image: response.image,
+            onNext: () => resolve('next'),
+            onFinish: response.image ? () => resolve('finish') : null,
+            onRescan: response.image ? () => resolve('rescan') : null,
+            onCancel: () => resolve('cancel')
+          });
+        })
+      }),
       maskRef: 0,
       appColor: storage.settings.appColor
     };
@@ -77,18 +101,15 @@ export default {
   },
 
   mounted() {
-    this.$vuetify.rtl = Constants.RtlLocales.includes(storage.settings.locale);    
+    this.$vuetify.rtl = Constants.RtlLocales.includes(storage.settings.locale);
     this.$i18n.locale = storage.settings.locale;
 
-    // Default route if connected
-    if (this.$route.matched.length === 0) {
-      this.$router.replace('/scan');
-    }
+    // The router resolves the initial URL before mounting this component.
   },
 
   methods: {
     mask(add) {
-      this.maskRef += add;
+      this.maskRef = Math.max(0, this.maskRef + add);
     },
 
     notify(notification) {
@@ -102,7 +123,7 @@ export default {
       const message = {
         type: types[notification.type],
         position: 'toast-bottom-right',
-        msg: notification.message,
+        msg: notification.message && notification.message.message || String(notification.message),
         timeout: timeout,
         progressbar: false
       };
@@ -114,10 +135,10 @@ export default {
 
 <style>
 
-input[type=number]::-webkit-inner-spin-button, 
-input[type=number]::-webkit-outer-spin-button { 
-  -webkit-appearance: none; 
-  margin: 0; 
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 input[type=number] {

@@ -71,3 +71,58 @@ describe('Scan job settings', () => {
     assert.throws(() => store.configure({ ...settings, deleteAfterTransfer: 'true' }));
   });
 });
+
+describe('Optional login and preset editing', () => {
+  let directory, store;
+  beforeEach(() => {
+    directory = fs.mkdtempSync(path.join(os.tmpdir(), 'scanservjs-login-'));
+    store = new JobStore(path.join(directory, 'settings.json'));
+  });
+  afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
+
+  it('defaults to no login, including an existing settings file without authentication', () => {
+    assert.strictEqual(store.authentication().enabled, false);
+    store.save();
+    const legacy = JSON.parse(fs.readFileSync(store.filename));
+    delete legacy.authentication;
+    fs.writeFileSync(store.filename, JSON.stringify(legacy));
+    assert.strictEqual(new JobStore(store.filename).authentication().enabled, false);
+  });
+  it('requires credentials before enabling login', async () => {
+    await assert.rejects(store.configureAuthentication({ enabled: true, username: 'scanner', password: '' }));
+    assert.strictEqual(store.authentication().enabled, false);
+  });
+  it('hashes passwords, persists login and never returns the hash', async () => {
+    const result = await store.configureAuthentication({ enabled: true, username: 'scanner', password: 'qa-secret-value' });
+    assert.strictEqual(result.enabled, true);
+    assert.strictEqual(result.passwordConfigured, true);
+    assert(!JSON.stringify(result).includes('hash'));
+    assert(!fs.readFileSync(store.filename, 'utf8').includes('qa-secret-value'));
+    const restored = new JobStore(store.filename);
+    assert.strictEqual(await restored.authorize('scanner', 'qa-secret-value'), true);
+    assert.strictEqual(await restored.authorize('scanner', 'wrong'), false);
+    assert.strictEqual(await restored.authorize('other', 'qa-secret-value'), false);
+    await restored.configureAuthentication({ enabled: false, username: 'scanner', password: '' });
+    assert.strictEqual(new JobStore(store.filename).authentication().enabled, false);
+  });
+  it('can opt in using existing config.users credentials', async () => {
+    const users = { scanner: 'legacy-secret' };
+    await store.configureAuthentication({ enabled: true, username: 'scanner', password: '' }, users);
+    assert.strictEqual(await store.authorize('scanner', 'legacy-secret', users), true);
+  });
+  it('renames and edits a preset without creating another dashboard button', () => {
+    const original = store.putPreset({ name: 'Old name', request });
+    const updated = store.putPreset({ id: original.id, name: 'New name', request: { ...request, params: { ...request.params, resolution: 600 } } });
+    assert.strictEqual(updated.id, original.id);
+    assert.strictEqual(store.data.presets.length, 1);
+    assert.strictEqual(updated.name, 'New name');
+    assert.strictEqual(updated.request.params.resolution, 600);
+  });
+  it('rejects renaming onto another preset and editing a deleted preset', () => {
+    const first = store.putPreset({ name: 'First', request });
+    const second = store.putPreset({ name: 'Second', request });
+    assert.throws(() => store.putPreset({ id: second.id, name: 'First', request }));
+    store.deletePreset(first.id);
+    assert.throws(() => store.putPreset({ id: first.id, name: 'Restored', request }));
+  });
+});

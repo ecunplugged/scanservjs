@@ -88,7 +88,8 @@ module.exports = class Request {
     }
 
     if ('--mode' in features) {
-      this.params.mode = data.params.mode || features['--mode'].default;
+      this.params.mode = typeof data.params.mode === 'string' && data.params.mode
+        ? data.params.mode : features['--mode'].default;
       assertContains(features['--mode'].options, this.params.mode, 'Invalid --mode');
     }
     if ('--adf-mode' in features) {

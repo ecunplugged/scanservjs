@@ -1,14 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { promisify } = require('util');
+const scrypt = promisify(crypto.scrypt);
 
 // Shared by all browsers. Tokens never leave the server through the API.
 module.exports = class JobStore {
-  constructor(filename) {
+  constructor(filename, authenticationEnabled = false) {
     this.filename = filename;
     this.data = fs.existsSync(filename) ? JSON.parse(fs.readFileSync(filename, 'utf8')) : {
       presets: [], paperless: { enabled: false, url: '', token: '', deleteAfterTransfer: false }, transfers: {}
     };
+    if (!this.data.authentication) {
+      this.data.authentication = { enabled: authenticationEnabled, username: 'scanner', salt: '', hash: '' };
+    }
   }
 
   save() {
@@ -16,6 +21,56 @@ module.exports = class JobStore {
     const temporary = `${this.filename}.tmp`;
     fs.writeFileSync(temporary, JSON.stringify(this.data, null, 2), { mode: 0o600 });
     fs.renameSync(temporary, this.filename);
+  }
+
+  authentication(users = {}) {
+    const auth = this.data.authentication;
+    return { enabled: auth.enabled, username: auth.username,
+      passwordConfigured: Boolean(auth.hash || users[auth.username]) };
+  }
+
+  async configureAuthentication(input, users = {}) {
+    if (typeof input.enabled !== 'boolean' || typeof input.username !== 'string'
+      || !input.username.trim() || input.username.length > 80 || /[:\r\n]/.test(input.username)
+      || typeof input.password !== 'string' || input.password.length > 1024) {
+      throw new Error('Invalid login settings');
+    }
+    const previous = this.data.authentication;
+    const auth = { ...previous, enabled: input.enabled, username: input.username.trim() };
+    if (auth.username !== previous.username) {
+      auth.hash = '';
+      auth.salt = '';
+    }
+    if (input.password) {
+      auth.salt = crypto.randomBytes(16).toString('hex');
+      auth.hash = (await scrypt(input.password, auth.salt, 64)).toString('hex');
+    }
+    if (auth.enabled && !auth.hash && !users[auth.username]) {
+      throw new Error('Set a password before enabling login');
+    }
+    this.data.authentication = auth;
+    try {
+      this.save();
+    } catch (error) {
+      this.data.authentication = previous;
+      throw error;
+    }
+    return this.authentication(users);
+  }
+
+  async authorize(username, password, users = {}) {
+    const auth = this.data.authentication;
+    if (username !== auth.username) {
+      return false;
+    }
+    if (auth.hash) {
+      const derived = await scrypt(password, auth.salt, 64);
+      const expected = Buffer.from(auth.hash, 'hex');
+      return derived.length === expected.length && crypto.timingSafeEqual(derived, expected);
+    }
+    const expected = Buffer.from(users[username] || '');
+    const actual = Buffer.from(password);
+    return expected.length > 0 && actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
   }
 
   settings() {
@@ -66,7 +121,15 @@ module.exports = class JobStore {
       throw new Error('Preset too large');
     }
     const name = input.name.trim();
-    const existing = this.data.presets.find(p => p.name === name);
+    const existing = input.id
+      ? this.data.presets.find(p => p.id === input.id)
+      : this.data.presets.find(p => p.name === name);
+    if (input.id && !existing) {
+      throw new Error('Preset no longer exists');
+    }
+    if (this.data.presets.some(p => p.name === name && (!existing || p.id !== existing.id))) {
+      throw new Error('A preset with this name already exists');
+    }
     const preset = { id: existing ? existing.id : crypto.randomBytes(16).toString('hex'), name, request };
     if (existing) {
       this.data.presets.splice(this.data.presets.indexOf(existing), 1, preset);

@@ -1,6 +1,16 @@
 <template>
   <div>
     <div class="text-h5 mb-4">{{ $t('settings.title') }}</div>
+    <v-card class="pa-4 mb-6" :title="$t('authentication.title')">
+      <v-card-text>
+        <v-switch v-model="authentication.enabled" :label="$t('authentication.enabled')" />
+        <v-text-field v-model="authentication.username" :label="$t('authentication.username')" autocomplete="username" />
+        <v-text-field v-model="authentication.password" type="password" autocomplete="new-password"
+          :label="$t('authentication.password')" :hint="authentication.passwordConfigured ? $t('authentication.password-saved') : ''" persistent-hint />
+        <p class="mb-4">{{ $t('authentication.description') }}</p>
+        <v-btn :disabled="!authenticationLoaded" @click="saveAuthentication">{{ $t('jobs.save') }}</v-btn>
+      </v-card-text>
+    </v-card>
     <v-card class="pa-4 mb-6" :title="$t('paperless.title')">
       <v-card-text>
         <v-switch v-model="paperless.enabled" :label="$t('paperless.enabled')" />
@@ -108,6 +118,7 @@ const storage = Storage.instance();
 
 export default {
   name: 'Settings',
+  inject: ['requestMask'],
 
   components: {
     SettingsSection,
@@ -126,6 +137,8 @@ export default {
   data() {
     return {
       settings: storage.settings,
+      authenticationLoaded: false,
+      authentication: { enabled: false, username: 'scanner', password: '' },
       paperlessLoaded: false,
       paperless: { enabled: false, url: '', token: '', deleteAfterTransfer: false }
     };
@@ -171,6 +184,12 @@ export default {
 
   async mounted() {
     try {
+      this.authentication = { ...await Common.fetch('api/v1/authentication'), password: '' };
+      this.authenticationLoaded = true;
+    } catch (error) {
+      this.$emit('notify', { type: 'e', message: error.message });
+    }
+    try {
       this.paperless = { ...await Common.fetch('api/v1/paperless'), token: '' };
       this.paperlessLoaded = true;
     } catch (error) {
@@ -179,8 +198,23 @@ export default {
   },
 
   methods: {
+    async saveAuthentication() {
+      this.requestMask(1);
+      try {
+        this.authentication = { ...await Common.fetch('api/v1/authentication', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.authentication)
+        }), password: '' };
+        this.$emit('notify', { type: 'i', message: this.$t('jobs.saved') });
+      } catch (error) {
+        this.$emit('notify', { type: 'e', message: error.message });
+      } finally {
+        this.requestMask(-1);
+      }
+    },
+
     async savePaperless() {
-      this.$emit('mask', 1);
+      this.requestMask(1);
       try {
         this.paperless = { ...await Common.fetch('api/v1/paperless', {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -190,7 +224,7 @@ export default {
       } catch (error) {
         this.$emit('notify', { type: 'e', message: error });
       } finally {
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       }
     },
 
@@ -203,14 +237,14 @@ export default {
     },
 
     reset() {
-      this.$emit('mask', 1);
+      this.requestMask(1);
       Common.fetch('api/v1/context', {
         method: 'DELETE'
       }).then(() => {
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       }).catch(error => {
         this.$emit('notify', { type: 'e', message: error });
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       });
     }
   }

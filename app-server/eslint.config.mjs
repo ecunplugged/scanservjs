@@ -35,5 +35,9 @@ export default [
       "space-before-blocks": "error",
       "space-infix-ops": "error"
     }
+  },
+  {
+    files: ["test/scan-job.test.js"],
+    languageOptions: { ecmaVersion: 2020 }
   }
 ];

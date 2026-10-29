@@ -7,8 +7,8 @@ const ExpressConfigurer = require('./express-configurer');
 
 ExpressConfigurer.with(app)
   .encoding()
-  .statics()
   .basicAuth()
+  .statics()
   .swagger()
   .endpoints();
 

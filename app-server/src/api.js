@@ -62,7 +62,11 @@ module.exports = new class Api {
    * @returns {Promise<any>}
    */
   async createPreview(req) {
-    const context = await application.context();
+    return this.withScanner(() => this._createPreview(req));
+  }
+
+  async _createPreview(req) {
+    const context = await application.contextForSource(req.params);
     const request = new Request(context, {
       params: {
         deviceId: req.params.deviceId,
@@ -150,8 +154,22 @@ module.exports = new class Api {
    * @param {ScanRequest} req
    * @returns {ScanResponse}
    */
+  async withScanner(action) {
+    if (this.scanning) {
+      const error = new Error('Scanner is busy. Wait for the current job to finish.');
+      error.statusCode = 409;
+      throw error;
+    }
+    this.scanning = true;
+    try {
+      return await action();
+    } finally {
+      this.scanning = false;
+    }
+  }
+
   async scan(req) {
-    return await ScanController.run(req);
+    return this.withScanner(() => ScanController.run(req));
   }
 
   /**

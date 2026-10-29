@@ -41,6 +41,26 @@ module.exports = new class Application {
     return this._config;
   }
 
+  async contextForSource(params) {
+    const context = await this.context();
+    const device = context.getDevice(params.deviceId);
+    const source = device.features['--source'];
+    if (!source || !params.source || params.source === source.default) {
+      return context;
+    }
+    if (!source.options.includes(params.source)) {
+      throw new Error('Invalid scan source');
+    }
+    // Flatbed and ADF have different active geometry/media options on Fujitsu.
+    const Process = require('./classes/process');
+    const raw = await Process.execute(this.scanimageCommand().features(device.id, params.source));
+    const refreshed = Device.from(raw);
+    refreshed.settings = device.settings;
+    return Object.assign(Object.create(Object.getPrototypeOf(context)), context, {
+      devices: context.devices.map(d => d.id === device.id ? refreshed : d)
+    });
+  }
+
   scanimageCommand() {
     if (this._scanimageCommand === null) {
       const ScanimageCommand = require('./classes/scanimage-command');

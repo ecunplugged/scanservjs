@@ -3,7 +3,7 @@ import Constants from './constants';
 export default class Request {
 
   /**
-   * @param {Request} request 
+   * @param {Request} request
    * @param {Device} device
    */
   constructor(request, device) {
@@ -40,12 +40,13 @@ export default class Request {
     if ('--page-width' in device.features) {
       this.params.pageWidth = request.params.pageWidth || device.features['--page-width'].default;
     }
-    
+
     if ('--adf-mode' in device.features) {
       this.params.adfMode = request.params.adfMode || device.features['--adf-mode'].default;
     }
     if ('--mode' in device.features) {
-      this.params.mode = request.params.mode || device.features['--mode'].default;
+      const feature = device.features['--mode'];
+      this.params.mode = feature.options.includes(request.params.mode) ? request.params.mode : feature.default;
     }
     if ('--source' in device.features) {
       this.params.source = request.params.source || device.features['--source'].default;
@@ -64,9 +65,9 @@ export default class Request {
   }
 
   /**
-   * @param {Request} request 
+   * @param {Request} request
    * @param {Device} device
-   * @returns 
+   * @returns
    */
   static create(request, device) {
     return new Request(request, device);

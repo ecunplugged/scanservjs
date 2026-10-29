@@ -38,6 +38,7 @@ import Constants from '../classes/constants';
 
 export default {
   name: 'About',
+  inject: ['requestMask'],
 
   emits: ['mask', 'notify'],
 
@@ -57,14 +58,14 @@ export default {
     },
 
     showSystemInfo() {
-      this.$emit('mask', 1);
+      this.requestMask(1);
       Common.fetch('api/v1/system').then(data => {
         this.systemInfoDialog = true;
         this.systemInfo = data;
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       }).catch(error => {
         this.$emit('notify', { type: 'e', message: error });
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       });
     }
   }

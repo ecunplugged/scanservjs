@@ -52,15 +52,24 @@ oder den Scan auf Letter-Höhe abschneidet.
 Beim fi-7260 mit A4-breitem Einzug ist A4-Hochformat die passende Einstellung;
 Querformat benötigt eine mindestens 297 mm breite Scanfläche.
 
+## Dashboard und Voreinstellungen
+
+Nach dem Öffnen erscheint das Dashboard. Jede gespeicherte Voreinstellung hat
+einen großen Button, der den Scan unmittelbar startet. Unter **Voreinstellungen**
+können Aufträge angelegt, bearbeitet, umbenannt und gelöscht werden. Änderungen
+werden mit derselben ID gespeichert; der Dashboard-Button wird aktualisiert.
+[Details zum Dashboard und zur optionalen Anmeldung](32-dashboard.md).
+
 ## 2. Scan-Aufträge speichern und abrufen
 
-1. Scanner, Einzug/Duplex, Auflösung, Farbmodus, Papierformat/Ausschnitt,
-   Stapelverarbeitung, Filter und Ausgabeformat einstellen.
-2. Unter **Scan-Voreinstellung** einen Namen eintragen und **Speichern** wählen.
-3. Zum Abrufen die gespeicherte Voreinstellung auswählen. Das startet noch
-   keinen Scan; der normale Scan-Knopf startet den Auftrag.
-4. Derselbe Name aktualisiert eine Voreinstellung. **Voreinstellung löschen**
-   entfernt den ausgewählten Eintrag.
+1. **Voreinstellungen → Neue Voreinstellung** öffnen.
+2. Namen, Scanner, Einzug/Duplex, Auflösung, Farbmodus, Papierformat/Ausschnitt,
+   Stapelverarbeitung, Filter und Ausgabeformat einstellen und **Speichern** wählen.
+3. Im Dashboard den Button mit dem gespeicherten Namen antippen, um direkt zu scannen.
+4. Zum Ändern **Voreinstellungen → Bearbeiten** verwenden. Dort können auch
+   Namen geändert werden. **Voreinstellung löschen** öffnet einen Bestätigungsdialog.
+5. Die Seite **Scannen** bietet weiterhin manuelle Einstellungen und die Möglichkeit,
+   eine Voreinstellung zuerst abzurufen und vor dem Start anzupassen.
 
 Die Einstellungen gelten für alle Browser am selben Scanserver und bleiben
 nach einem Neustart erhalten. Der Stapelindex wird beim Abrufen auf 1 gesetzt.
@@ -91,7 +100,7 @@ Dateirechten `0600` in `data/job-settings.json` (installiert bzw. im Docker-Volu
 und Importzuordnungen und gehört nicht ins Git-Repository. Backups entsprechend
 schützen. Zugriff auf die Oberfläche bedeutet auch Zugriff auf die Einrichtung:
 für Mehrbenutzerbetrieb die vorhandene [Authentifizierung](10-configuration.md)
-über `config.users` oder einen authentifizierten Reverse Proxy einrichten.
+unter **Einstellungen → Anmeldung** oder über einen authentifizierten Reverse Proxy einrichten.
 
 ## Übertragungs- und Löschverhalten
 

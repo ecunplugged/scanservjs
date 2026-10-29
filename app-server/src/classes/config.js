@@ -57,6 +57,7 @@ module.exports = class Config {
       tempDirectory: path.join(BASE_PATH, 'data/temp'),
 
       users: {},
+      authenticationEnabled: false,
 
       previewResolution: 100,
       previewPipeline: {

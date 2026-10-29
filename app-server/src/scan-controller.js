@@ -27,7 +27,7 @@ class ScanController {
    * @param {ScanRequest} req
    */
   async init(req) {
-    this.context = await application.context();
+    this.context = await application.contextForSource(req.params);
     this.request = new Request(this.context, req);
     this.pipeline = config.pipelines
       .filter(p => p.description === this.request.pipeline)[0];
@@ -63,7 +63,11 @@ class ScanController {
    */
   async scan() {
     log.info('Scanning');
-    await Process.spawn(scanimageCommand.scan(this.request));
+    try {
+      await Process.spawn(scanimageCommand.scan(this.request));
+    } catch (error) {
+      throw new Error(`Scanning failed: ${error.stderr && error.stderr.trim() || error.message}`);
+    }
   }
 
   /**
@@ -72,6 +76,10 @@ class ScanController {
   async finish() {
     log.debug(`Post processing: ${this.pipeline.description}`);
     let files = (await this.listFiles()).filter(f => f.extension === '.tif');
+
+    if (!files.length) {
+      throw new Error('No pages were scanned. Check the document feeder and scanner connection.');
+    }
 
     // Update preview with the first image (pre filter)
     await this.updatePreview(files[0].name);

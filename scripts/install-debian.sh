@@ -10,7 +10,6 @@ source_ref='master'
 offline=false
 build_directory=''
 package_directory=''
-generated_password=''
 backup_directory=''
 migrate_from=''
 restart_on_failure=false
@@ -33,7 +32,7 @@ Im Normalbetrieb wird der Dienst anschließend gestartet und geprüft.
                Dienst aktivieren, aber noch nicht starten.
   --help       Diese Hilfe anzeigen
 
-Neue Installationen: Port 8080, Benutzer scanner, zufälliges Passwort.
+Neue Installationen: Port 8080, Anmeldung standardmäßig ausgeschaltet.
 Auch für Updates: frischer Download und Neuinstallation bei gleicher Version.
 Bestehende config.local.js, Scans und Paperless-Einstellungen bleiben erhalten.
 Alte lokale Dienstdateien/Drop-ins werden gesichert und durch den Paketdienst ersetzt.
@@ -76,9 +75,6 @@ on_error() {
     systemctl restart scanservjs.service || true
   fi
   printf '\nInstallation fehlgeschlagen (Zeile %s, Exit %s).\n' "$1" "$status" >&2
-  if [[ -n "$generated_password" ]]; then
-    printf 'Die erzeugten Zugangsdaten stehen in /etc/scanservjs/install-credentials.txt (nur root).\n' >&2
-  fi
   if [[ -n "$backup_directory" ]]; then printf 'Sicherung: %s\n' "$backup_directory" >&2; fi
   exit "$status"
 }
@@ -226,7 +222,7 @@ if [[ -d /etc/scanservjs || -d /var/lib/scanservjs || -n "$migrate_from"
   log "Bestehende Einrichtung und lokale Dienstdateien gesichert: $backup_directory"
 fi
 
-# Set authentication BEFORE the package's post-install hook can start the service.
+# Create a default configuration before the package can start the service.
 install -d -m 755 /etc/scanservjs
 if [[ -n "$migrate_from" ]]; then
   log "Alte Installation übernehmen: $migrate_from (Original bleibt unverändert)"
@@ -239,7 +235,6 @@ if [[ -n "$migrate_from" ]]; then
   fi
 fi
 if [[ ! -e /etc/scanservjs/config.local.js ]]; then
-  generated_password=$(openssl rand -hex 16)
   install -m 640 /dev/null /etc/scanservjs/config.local.js
   chown root:users /etc/scanservjs/config.local.js
   cat > /etc/scanservjs/config.local.js <<CONFIG
@@ -248,13 +243,12 @@ module.exports = {
     config.host = '0.0.0.0';
     config.port = 8080;
     config.ocrLanguage = 'deu+eng';
-    config.users = { scanner: '$generated_password' };
+    config.authenticationEnabled = false;
+    config.users = {};
   }
 };
 CONFIG
-  install -m 600 /dev/null /etc/scanservjs/install-credentials.txt
-  printf 'Benutzer: scanner\nPasswort: %s\n' "$generated_password" \
-    > /etc/scanservjs/install-credentials.txt
+
 else
   log 'Vorhandene config.local.js bleibt unverändert (auch Port und Anmeldung).'
 fi
@@ -295,12 +289,8 @@ if ! "$offline"; then
 fi
 restart_on_failure=false
 log "Installiert: $repository ($source_commit)"
-if [[ -n "$generated_password" ]]; then
-  printf 'Oberfläche: http://<IP-DEINES-DEBIAN-RECHNERS>:8080\n'
-  printf 'Benutzer: scanner\nPasswort: %s\n' "$generated_password"
-  printf 'Zugangsdaten zusätzlich: /etc/scanservjs/install-credentials.txt (nur root)\n'
-else
-  printf 'Adresse, Port und Anmeldung entsprechen deiner bestehenden config.local.js.\n'
-fi
+printf 'Standardadresse bei Neuinstallation: http://<IP-DEINES-DEBIAN-RECHNERS>:8080\n'
+printf 'Anmeldung ist standardmäßig aus; bei Bedarf unter Einstellungen aktivieren.\n'
+printf 'Vorhandene Port-/Host-Einstellungen aus config.local.js bleiben erhalten.\n'
 printf 'Paperless-URL, API-Token und Löschoption anschließend in der Weboberfläche einrichten.\n'
 printf 'Logs: journalctl -u scanservjs -n 100 --no-pager\n'

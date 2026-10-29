@@ -1,5 +1,11 @@
 <template>
   <div>
+    <div v-if="managePreset" class="mb-6">
+      <h1 class="text-h4 mb-4">{{ $t(editPresetId ? 'jobs.edit' : 'jobs.new') }}</h1>
+      <v-text-field v-model="presetName" :label="$t('jobs.name')" maxlength="80" style="max-width: 600px;" />
+      <v-btn color="primary" :disabled="!ready || !presetName.trim()" @click="savePreset">{{ $t('jobs.save') }}</v-btn>
+      <v-btn to="/presets" variant="text" class="ml-2">{{ $t('jobs.cancel') }}</v-btn>
+    </div>
     <v-row>
       <v-col cols="12" md="3" class="mb-10 mb-md-0">
         <div class="d-flex">
@@ -32,7 +38,7 @@
           :items="modes" item-value="value" item-title="text" />
 
         <v-select v-if="'--disable-dynamic-lineart' in device.features"
-          v-model="request.params.mode"
+          v-model="request.params.dynamicLineart"
           :label="$t('scan.dynamic-lineart')"
           :items="[
             { value: false, text: $t('scan.dynamic-lineart:disabled') },
@@ -65,25 +71,23 @@
           :items="paperSizes" item-title="name" return-object
           :label="$t('scan.paperSize')" @update:model-value="updatePaperSize" />
 
-        <v-select v-model="selectedPreset" :items="presets" item-title="name" item-value="id"
-          :label="$t('jobs.preset')" @update:model-value="loadPreset" />
-        <v-text-field v-model="presetName" :label="$t('jobs.name')" maxlength="80" />
-        <div class="d-flex flex-wrap mb-4">
-          <v-btn :disabled="!selectedPreset" @click="loadPreset(selectedPreset)">{{ $t('jobs.load') }}</v-btn>
-          <v-btn :disabled="!presetName.trim()" @click="savePreset">{{ $t('jobs.save') }}</v-btn>
-          <v-btn :disabled="!selectedPreset" @click="deletePreset">{{ $t('jobs.delete') }}</v-btn>
+        <div v-if="!managePreset" class="mb-4">
+          <v-select v-model="selectedPreset" :items="presets" item-title="name" item-value="id"
+            :label="$t('jobs.preset')" @update:model-value="loadPreset" />
+          <v-btn :disabled="!selectedPreset || !ready" @click="loadPreset(selectedPreset)">{{ $t('jobs.load') }}</v-btn>
+          <v-btn to="/presets/new" variant="text">{{ $t('jobs.new') }}</v-btn>
         </div>
 
         <div class="d-flex flex-row-reverse flex-wrap">
-          <v-btn color="blue" class="ml-1 mb-1" @click="scan(1)">{{ $t('scan.btn-scan') }} <v-icon class="ml-2" :icon="mdiCamera" /></v-btn>
-          <v-btn v-if="geometry" color="green" class="ml-1 mb-1" @click="createPreview">{{ $t('scan.btn-preview') }} <v-icon class="ml-2" :icon="mdiMagnify" /></v-btn>
+          <v-btn color="blue" class="ml-1 mb-1" :disabled="!ready || scanJob.busy" :loading="scanJob.busy" @click="scan">{{ $t('scan.btn-scan') }} <v-icon class="ml-2" :icon="mdiCamera" /></v-btn>
+          <v-btn v-if="geometry" color="green" class="ml-1 mb-1" :disabled="!ready || scanJob.busy" @click="createPreview">{{ $t('scan.btn-preview') }} <v-icon class="ml-2" :icon="mdiMagnify" /></v-btn>
           <v-btn color="amber" class="ml-1 mb-1" @click="deletePreview">{{ $t('scan.btn-clear') }} <v-icon class="ml-2" :icon="mdiDelete" /></v-btn>
         </div>
       </v-col>
 
       <v-col cols="12" md="6" class="mb-10 mb-md-0 d-flex justify-center">
         <div style="width: 100%" :style="{ maxWidth: `${preview.width}px` }">
-          <cropper v-if="geometry" ref="cropper" :key="preview.key" class="cropper" :transition-time="10" :wheel-resize="false"
+          <cropper v-if="ready && geometry && img" ref="cropper" :key="preview.key" class="cropper" :transition-time="10" :wheel-resize="false"
               :default-position="cropperDefaultPosition" :default-size="cropperDefaultSize"
               :src="img" @change="onCropperChange" />
           <v-img v-if="!geometry" :src="img" />
@@ -123,16 +127,13 @@
         </div>
       </v-col>
     </v-row>
-
-    <batch-dialog ref="batchDialog" />
-  </div>
+</div>
 </template>
 
 <script>
 import { mdiCamera, mdiDelete, mdiMagnify, mdiRefresh } from '@mdi/js';
 import { Cropper } from 'vue-advanced-cropper';
 import { useI18n } from 'vue-i18n';
-import BatchDialog from './BatchDialog.vue';
 
 import Common from '../classes/common';
 import Device from '../classes/device';
@@ -157,9 +158,10 @@ export default {
   name: 'Scan',
 
   components: {
-    Cropper,
-    BatchDialog
+    Cropper
   },
+  inject: ['scanJob', 'requestMask'],
+  props: { managePreset: Boolean, editPresetId: { type: String, default: null } },
 
   emits: ['mask', 'notify'],
 
@@ -190,6 +192,8 @@ export default {
       device: device,
       img: null,
       request: request,
+      ready: false,
+      resizeHandler: null,
       presets: [],
       selectedPreset: null,
       presetName: '',
@@ -342,16 +346,27 @@ export default {
     }
   },
 
-  mounted() {
-    this.readPresets();
-    this._resizePreview();
-    this.readContext().then(() => {
-      this.readPreview();
-    });
-    window.addEventListener('resize', () => {
+  async mounted() {
+    this.resizeHandler = () => {
       clearTimeout(this.preview.timer);
       this.preview.timer = setTimeout(this._resizePreview, 100);
-    });
+    };
+    window.addEventListener('resize', this.resizeHandler);
+    try {
+      await this.readPresets();
+      await this.readContext();
+      if (this.editPresetId) {
+        this.loadPreset(this.editPresetId);
+      }
+      await this.readPreview();
+    } catch {
+      // The request helper already displays the error.
+    }
+  },
+
+  beforeUnmount() {
+    window.removeEventListener('resize', this.resizeHandler);
+    clearTimeout(this.preview.timer);
   },
 
   methods: {
@@ -367,22 +382,14 @@ export default {
       try {
         const preset = await Common.fetch('api/v1/presets', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: this.presetName, request: this.request })
+          body: JSON.stringify({ id: this.editPresetId || undefined, name: this.presetName, request: this.request })
         });
         await this.readPresets();
         this.selectedPreset = preset.id;
         this.notify({ type: 'i', message: this.$t('jobs.saved') });
-      } catch (error) {
-        this.notify({ type: 'e', message: error });
-      }
-    },
-
-    async deletePreset() {
-      try {
-        await Common.fetch(`api/v1/presets/${this.selectedPreset}`, { method: 'DELETE' });
-        this.selectedPreset = null;
-        this.presetName = '';
-        await this.readPresets();
+        if (this.managePreset) {
+          this.$router.push('/presets');
+        }
       } catch (error) {
         this.notify({ type: 'e', message: error });
       }
@@ -422,45 +429,31 @@ export default {
       }
     },
 
-    _fetch(url, options) {
+    async _fetch(url, options) {
       this.mask(1);
-      return Common.fetch(url, options)
-        .then(data => {
-          this.mask(-1);
-          return data;
-        })
-        .catch(error => {
-          this.notify({ type: 'e', message: error });
-          this.mask(-1);
-          return error;
-        });
+      try {
+        return await Common.fetch(url, options);
+      } catch (error) {
+        this.notify({ type: 'e', message: error.message });
+        throw error;
+      } finally {
+        this.mask(-1);
+      }
     },
 
-    createPreview() {
-      this.mask(1);
-
-      // Keep reloading the preview image
-      const timer = window.setInterval(this.readPreview, 1000);
-
-      let data = Common.clone(this.request);
-
-      this._fetch('api/v1/preview', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      }).then(() => {
+    async createPreview() {
+      const timer = window.setInterval(() => this.readPreview(), 1000);
+      try {
+        await this._fetch('api/v1/preview', {
+          method: 'POST', body: JSON.stringify(this.request),
+          headers: { 'Content-Type': 'application/json' }
+        });
+        await this.readPreview();
+      } catch {
+        // Keep the scan form visible on failure.
+      } finally {
         window.clearInterval(timer);
-
-        // Some scanners don't create the preview until after the scan has finished.
-        // Run preview one last time
-        window.setTimeout(this.readPreview, 1000);
-        this.mask(-1);
-      }).catch(() => {
-        this.mask(-1);
-      });
+      }
     },
 
     deletePreview() {
@@ -483,7 +476,10 @@ export default {
       // The preview image may not have perfectly scaled dimensions
       // because pixel counts are integers. So we report a horizontal
       // and vertical resolution
-      const image = this.$refs.cropper.imageSize;
+      const image = this.$refs.cropper && this.$refs.cropper.imageSize;
+      if (!image || !image.width || !image.height || !scanner) {
+        return { x: 1, y: 1 };
+      }
       return {
         x: image.width / scanner.width,
         y: image.height / scanner.height
@@ -524,7 +520,7 @@ export default {
     },
 
     mask(add) {
-      this.$emit('mask', add);
+      this.requestMask(add);
     },
 
     notify(notification) {
@@ -532,6 +528,9 @@ export default {
     },
 
     onCoordinatesChange() {
+      if (!this.$refs.cropper) {
+        return;
+      }
       const adjusted = this.scaleCoordinates(
         this.request.params,
         this.pixelsPerMm().x,
@@ -541,6 +540,9 @@ export default {
     },
 
     onCropperChange({ coordinates }) {
+      if (!this.ready || !coordinates || !this.$refs.cropper || !this.$refs.cropper.imageSize.width) {
+        return;
+      }
       const adjusted = this.scaleCoordinates(
         coordinates,
         1 / this.pixelsPerMm().x,
@@ -578,23 +580,23 @@ export default {
           this.context = context;
           this.device = context.devices[0];
           this.request = this.buildRequest();
+          this.ready = true;
           for (let test of context.diagnostics) {
             if (!test.success) {
               this.notify({ type: 'e', message: test.message });
             }
           }
         } else {
+          this.ready = false;
           this.notify({ type: 'e', message: this.$t('scan.message:no-devices') });
         }
-      });
+      }).finally(() => window.clearTimeout(timer));
     },
 
     deviceRefresh() {
       this._fetch('api/v1/context', {
         method: 'DELETE'
-      }).then(() => {
-        this.readContext();
-      });
+      }).then(() => this.readContext()).catch(() => {});
     },
 
     readPreview() {
@@ -602,13 +604,13 @@ export default {
       const uri = 'api/v1/preview?' + new URLSearchParams(
         this.request.filters.map(e => ['filter', e]));
 
-      this._fetch(uri, {
+      return this._fetch(uri, {
         cache: 'no-store',
         method: 'GET'
       }).then(data => {
         this.img = 'data:image/jpeg;base64,' + data.content;
         this._resizePreview();
-      });
+      }).catch(() => {});
     },
 
     buildRequest() {
@@ -627,57 +629,28 @@ export default {
       this.request = this.buildRequest();
     },
 
-    scan(index) {
-      if (index !== undefined) {
-        this.request.index = index;
+    async scan() {
+      if (!this.ready || this.scanJob.busy) {
+        return;
       }
-
-      const data = Common.clone(this.request);
-      this._fetch('api/v1/scan', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
+      try {
+        const response = await this.scanJob.start(this.request);
+        if (!response) {
+          return;
         }
-      }).then((response) => {
-        if (response && response.paperless && response.paperless.status !== 'disabled') {
+        if (response.paperless && response.paperless.status !== 'disabled') {
           const result = response.paperless;
           this.notify({ type: result.status === 'error' ? 'e' : 'i',
             message: result.message || this.$t(`paperless.${result.status}`) });
         }
-        if (response && 'index' in response) {
-          const options = {
-            message: this.$t('scan.message:turn-documents'),
-            onFinish: () => {
-            },
-            onNext: () => {
-              this.request.index = response.index + 1;
-              this.scan();
-            }
-          };
-          if (response.image) {
-            options.message = `${this.$t('scan.message:preview-of-page')} ${response.index}`;
-            options.image = response.image;
-            options.onFinish = () => {
-              this.request.index = -1;
-              this.scan();
-            };
-            options.onRescan = () => {
-              this.request.index = response.index;
-              this.scan();
-            };
-          }
-          this.$refs.batchDialog.open(options);
+        if (storage.settings.showFilesAfterScan) {
+          this.$router.push('/files');
         } else {
-          // Finish
-          if (storage.settings.showFilesAfterScan) {
-            this.$router.push('/files');
-          } else {
-            this.readPreview();
-          }
+          this.readPreview();
         }
-      });
+      } catch {
+        // ScanJob exposes the actual server error and always releases the mask.
+      }
     },
 
     updatePaperSize(value) {

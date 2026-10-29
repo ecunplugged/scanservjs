@@ -84,6 +84,7 @@ const storage = Storage.instance();
 
 export default {
   name: 'Files',
+  inject: ['requestMask'],
 
   emits: ['mask', 'notify'],
 
@@ -97,7 +98,7 @@ export default {
       smAndDown
     };
   },
-  
+
   data() {
     return {
       dialogDelete: false,
@@ -187,7 +188,7 @@ export default {
 
   methods: {
     async sendPaperless(file) {
-      this.$emit('mask', 1);
+      this.requestMask(1);
       try {
         const result = await Common.fetch(`api/v1/files/${encodeURIComponent(file.name)}/paperless`, { method: 'POST' });
         this.$emit('notify', { type: 'i', message: this.$t(`paperless.${result.status}`) });
@@ -195,43 +196,43 @@ export default {
       } catch (error) {
         this.$emit('notify', { type: 'e', message: error });
       } finally {
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       }
     },
 
     actionList() {
-      this.$emit('mask', 1);
+      this.requestMask(1);
       Common.fetch('api/v1/context').then(context => {
         this.actions = context.actions;
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       }).catch(error => {
         this.$emit('notify', {type: 'e', message: error});
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       });
     },
 
     fileList() {
-      this.$emit('mask', 1);
+      this.requestMask(1);
       Common.fetch('api/v1/files').then(files => {
         this.files = files;
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       }).catch(error => {
         this.$emit('notify', {type: 'e', message: error});
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       });
     },
 
     fileRemove(file) {
-      this.$emit('mask', 1);
+      this.requestMask(1);
       Common.fetch(`api/v1/files/${file.name}`, {
         method: 'DELETE'
       }).then(data => {
         this.$emit('notify', {type: 'i', message: `${this.$t('files.message:deleted', [data.name])}`});
         this.fileList();
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       }).catch(error => {
         this.$emit('notify', {type: 'e', message: error});
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       });
     },
 
@@ -243,7 +244,7 @@ export default {
     },
 
     renameFileConfirm() {
-      this.$emit('mask', 1);
+      this.requestMask(1);
       Common.fetch(`api/v1/files/${this.editedItem.name}`, {
         method: 'PUT',
         headers: {
@@ -254,10 +255,10 @@ export default {
       }).then(() => {
         this.$emit('notify', {type: 'i', message: `${this.$t('files.message:renamed')}`});
         this.fileList();
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       }).catch(error => {
         this.$emit('notify', {type: 'e', message: error});
-        this.$emit('mask', -1);
+        this.requestMask(-1);
       }).finally(() => {
         this.closeRename();
       });

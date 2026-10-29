@@ -2,7 +2,7 @@ const application = require('./application');
 const JobStore = require('./classes/job-store');
 const Paperless = require('./classes/paperless');
 const config = application.config();
-const store = new JobStore(config.jobSettingsPath);
+const store = new JobStore(config.jobSettingsPath, config.authenticationEnabled);
 const paperless = new Paperless(store);
 let resuming = false;
 async function resume() {

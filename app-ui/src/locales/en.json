@@ -222,11 +222,16 @@
   "jobs": {
     "load": "Load",
     "preset": "Scan preset",
-    "name": "Name (same name replaces preset)",
+    "name": "Name",
     "save": "Save",
     "delete": "Delete preset",
     "saved": "Saved",
-    "device-missing": "The scanner for this preset is unavailable."
+    "device-missing": "The scanner for this preset is unavailable.",
+    "manage": "Presets",
+    "new": "New preset",
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "confirm-delete": "Delete preset “{0}”?"
   },
   "paperless": {
     "title": "Paperless-ngx setup",
@@ -239,5 +244,23 @@
     "success": "Paperless import confirmed.",
     "pending": "Paperless is still processing. Local file retained; check again from the file list.",
     "disabled": "Paperless is disabled."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "Load your documents and choose a preset.",
+    "manage": "Manage presets",
+    "manual": "Manual scanning",
+    "start": "Scan now",
+    "empty": "No presets saved yet.",
+    "completed": "Scan completed:",
+    "retry": "Retry"
+  },
+  "authentication": {
+    "title": "Login",
+    "enabled": "Require login",
+    "username": "Username",
+    "password": "Password",
+    "password-saved": "Password saved. Leave blank to keep it.",
+    "description": "Login is off by default. Set a username and password to enable it when needed."
   }
 }

@@ -1,4 +1,47 @@
 paths:
+  /api/v1/authentication:
+    get:
+      summary: Read optional login setup (off by default)
+      responses:
+        200:
+          description: enabled, username and passwordConfigured; no password or hash
+    put:
+      summary: Enable or disable login and configure credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled, username, password]
+              properties:
+                enabled:
+                  type: boolean
+                  default: false
+                username:
+                  type: string
+                password:
+                  type: string
+                  writeOnly: true
+      responses:
+        200:
+          description: Saved settings; an empty password retains the existing one
+  /api/v1/presets/{id}/scan:
+    post:
+      summary: Immediately scan using the latest saved preset
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Scan response or next batch pass
+        404:
+          description: Preset no longer exists
+        409:
+          description: Scanner is busy
   /api/v1/presets:
     get:
       summary: List server-wide scan presets
