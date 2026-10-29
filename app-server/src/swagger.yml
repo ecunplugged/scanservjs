@@ -1,4 +1,89 @@
 paths:
+  /api/v1/presets:
+    get:
+      summary: List server-wide scan presets
+      tags: [Scan jobs]
+      responses:
+        200:
+          description: Saved presets with id, name and request
+    post:
+      summary: Save or replace a named scan preset
+      tags: [Scan jobs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, request]
+              properties:
+                name:
+                  type: string
+                  maxLength: 80
+                request:
+                  type: object
+      responses:
+        200:
+          description: Saved preset; the batch index is reset to 1
+  /api/v1/presets/{id}:
+    delete:
+      summary: Delete a saved preset
+      tags: [Scan jobs]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Preset removed
+  /api/v1/paperless:
+    get:
+      summary: Read Paperless setup without the API token
+      tags: [Paperless]
+      responses:
+        200:
+          description: enabled, url, deleteAfterTransfer and tokenConfigured
+    put:
+      summary: Save server-wide Paperless setup
+      description: An empty token keeps the existing token. Deletion defaults to false.
+      tags: [Paperless]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled, url, token, deleteAfterTransfer]
+              properties:
+                enabled:
+                  type: boolean
+                url:
+                  type: string
+                token:
+                  type: string
+                  writeOnly: true
+                deleteAfterTransfer:
+                  type: boolean
+      responses:
+        200:
+          description: Saved settings without the token
+        403:
+          description: Cross-host browser setup request rejected
+  /api/v1/files/{name}/paperless:
+    post:
+      summary: Upload a file or check its existing Paperless import
+      tags: [Paperless]
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: status, deleted and optional documentId or taskId
   /api/v1/context:
     delete:
       summary: Deletes cached context

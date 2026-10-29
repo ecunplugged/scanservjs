@@ -1,5 +1,9 @@
 # scanservjs
 
+Dieser Fork ergänzt **A4-Auswahl, gespeicherte Scan-Voreinstellungen und Paperless-ngx**.
+Die [Einrichtung und Installationsanleitung](docs/30-presets-paperless.md) beschreibt die neuen Funktionen.
+Die unten verlinkten Upstream-Images enthalten diese Erweiterungen nicht.
+
 [![Build Status](https://img.shields.io/github/actions/workflow/status/sbs20/scanservjs/build.yml?branch=master&style=for-the-badge)](https://github.com/sbs20/scanservjs/actions)
 [![Code QL Status](https://img.shields.io/github/actions/workflow/status/sbs20/scanservjs/codeql-analysis.yml?branch=master&style=for-the-badge&label=CodeQL)](https://github.com/sbs20/scanservjs/actions)
 [![Docker Image Size (latest by date)](https://img.shields.io/docker/image-size/sbs20/scanservjs?style=for-the-badge)](https://hub.docker.com/r/sbs20/scanservjs)

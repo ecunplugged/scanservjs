@@ -142,8 +142,11 @@ class ScanController {
 
     const width = 868;
     if (device.geometry) {
-      const scale = width / device.features['-x'].limits[1];
-      const height = Math.round(device.features['-y'].limits[1] * scale);
+      const adf = /^ADF/i.test(this.request.params.source || '');
+      const mediaWidth = adf && this.request.params.pageWidth || device.features['-x'].limits[1];
+      const mediaHeight = adf && this.request.params.pageHeight || device.features['-y'].limits[1];
+      const scale = width / mediaWidth;
+      const height = Math.round(mediaHeight * scale);
       const left = Math.round(this.request.params.left * scale);
       const top = Math.round(this.request.params.top * scale);
       const scaleWidth = Math.round(this.request.params.width * scale);
@@ -177,9 +180,15 @@ class ScanController {
     if (this.finishUp) {
       const file = await this.finish();
       await userOptions.afterScan(file);
-      return {
-        file
-      };
+      const services = require('./job-services');
+      let paperless;
+      try {
+        paperless = await services.paperless.transfer(file,
+          FileInfo.unsafe(config.thumbnailDirectory, file.name));
+      } catch (error) {
+        paperless = { status: 'error', message: error.message, deleted: false };
+      }
+      return { file, paperless };
 
     } else {
       log.info(`Finished pass: ${this.request.index}`);

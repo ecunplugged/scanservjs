@@ -1,6 +1,17 @@
 <template>
   <div>
     <div class="text-h5 mb-4">{{ $t('settings.title') }}</div>
+    <v-card class="pa-4 mb-6" :title="$t('paperless.title')">
+      <v-card-text>
+        <v-switch v-model="paperless.enabled" :label="$t('paperless.enabled')" />
+        <v-text-field v-model="paperless.url" :label="$t('paperless.url')" placeholder="https://paperless.example.com" />
+        <v-text-field v-model="paperless.token" type="password" autocomplete="new-password"
+          :label="$t('paperless.token')" :hint="paperless.tokenConfigured ? $t('paperless.token-saved') : ''" persistent-hint />
+        <v-switch v-model="paperless.deleteAfterTransfer" :label="$t('paperless.delete')" />
+        <p class="mb-4">{{ $t('paperless.description') }}</p>
+        <v-btn :disabled="!paperlessLoaded" @click="savePaperless">{{ $t('jobs.save') }}</v-btn>
+      </v-card-text>
+    </v-card>
     <settings-section>
       <template #title>{{ $t('settings.behaviour-ui') }}</template>
       <template #items>
@@ -114,7 +125,9 @@ export default {
 
   data() {
     return {
-      settings: storage.settings
+      settings: storage.settings,
+      paperlessLoaded: false,
+      paperless: { enabled: false, url: '', token: '', deleteAfterTransfer: false }
     };
   },
 
@@ -156,7 +169,31 @@ export default {
     }
   },
 
+  async mounted() {
+    try {
+      this.paperless = { ...await Common.fetch('api/v1/paperless'), token: '' };
+      this.paperlessLoaded = true;
+    } catch (error) {
+      this.$emit('notify', { type: 'e', message: error });
+    }
+  },
+
   methods: {
+    async savePaperless() {
+      this.$emit('mask', 1);
+      try {
+        this.paperless = { ...await Common.fetch('api/v1/paperless', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.paperless)
+        }), token: '' };
+        this.$emit('notify', { type: 'i', message: this.$t('jobs.saved') });
+      } catch (error) {
+        this.$emit('notify', { type: 'e', message: error });
+      } finally {
+        this.$emit('mask', -1);
+      }
+    },
+
     clearStorage() {
       storage.request = null;
     },

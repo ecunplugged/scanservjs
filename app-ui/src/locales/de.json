@@ -183,5 +183,26 @@
     "reset": "Zurücksetzen",
     "clear-storage:description": "Alle gespeicherten Parameter löschen",
     "clear-storage": "Löschen"
+  },
+  "jobs": {
+    "load": "Abrufen",
+    "preset": "Scan-Voreinstellung",
+    "name": "Name (gleicher Name überschreibt)",
+    "save": "Speichern",
+    "delete": "Voreinstellung löschen",
+    "saved": "Gespeichert",
+    "device-missing": "Der Scanner dieser Voreinstellung ist nicht verfügbar."
+  },
+  "paperless": {
+    "title": "Paperless-ngx einrichten",
+    "enabled": "Scans automatisch an Paperless senden",
+    "url": "Paperless-Basis-URL",
+    "token": "API-Token",
+    "token-saved": "Token gespeichert. Leer lassen, um ihn beizubehalten.",
+    "delete": "Lokale Datei nach bestätigtem Paperless-Import löschen",
+    "description": "Die Einrichtung gilt für alle Benutzer. Bei Fehlern bleiben Dateien erhalten. Offene Importe lassen sich über die Paperless-Schaltfläche in der Dateiliste erneut prüfen.",
+    "success": "Paperless-Import bestätigt.",
+    "pending": "Paperless verarbeitet noch. Lokale Datei bleibt erhalten; Status in der Dateiliste erneut prüfen.",
+    "disabled": "Paperless ist deaktiviert."
   }
 }

@@ -6,6 +6,10 @@ FROM --platform=$BUILDPLATFORM node:24-trixie-slim AS scanservjs-build
 ENV APP_DIR=/app
 WORKDIR "$APP_DIR"
 
+# makedeb.sh creates an xz-compressed runtime archive.
+RUN apt-get update && apt-get install -y --no-install-recommends xz-utils \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY package*.json build.js "$APP_DIR/"
 COPY app-server/package*.json "$APP_DIR/app-server/"
 COPY app-ui/package*.json "$APP_DIR/app-ui/"

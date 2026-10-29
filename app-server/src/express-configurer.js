@@ -58,7 +58,34 @@ function formatForLog(req) {
 /**
  * Definition of all endpoints
  */
+const { store, paperless } = require('./job-services');
 const EndpointSpecs = [
+  {
+    method: 'get', path: '/api/v1/presets',
+    callback: async (req, res) => res.send(store.data.presets)
+  },
+  {
+    method: 'post', path: '/api/v1/presets',
+    callback: async (req, res) => res.send(store.putPreset(req.body))
+  },
+  {
+    method: 'delete', path: '/api/v1/presets/:id',
+    callback: async (req, res) => { store.deletePreset(req.params.id); res.send({}); }
+  },
+  {
+    method: 'get', path: '/api/v1/paperless',
+    callback: async (req, res) => res.send(store.settings())
+  },
+  {
+    method: 'put', path: '/api/v1/paperless',
+    callback: async (req, res) => res.send(store.configure(req.body))
+  },
+  {
+    method: 'post', path: '/api/v1/files/:name/paperless',
+    callback: async (req, res) => res.send(await paperless.transfer(
+      FileInfo.unsafe(config.outputDirectory, req.params.name),
+      FileInfo.unsafe(config.thumbnailDirectory, req.params.name)))
+  },
   {
     method: 'delete',
     path: '/api/v1/context',
@@ -207,8 +234,13 @@ module.exports = class ExpressConfigurer {
   endpoints() {
     EndpointSpecs.forEach(spec => {
       this.app[spec.method](spec.path, async (req, res) => {
-        log.info(formatForLog(req));
+        log.info(spec.path === '/api/v1/paperless' ? { method: req.method, path: req.path } : formatForLog(req));
         try {
+          if (spec.method === 'put' && spec.path === '/api/v1/paperless' && req.headers.origin
+            && new URL(req.headers.origin).host !== req.get('host')) {
+            res.status(403).send({ message: 'Paperless setup requires a same-host request' });
+            return;
+          }
           await spec.callback(req, res);
         } catch (error) {
           sendError(res, 500, error);

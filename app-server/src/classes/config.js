@@ -50,6 +50,7 @@ module.exports = class Config {
       tesseract: '/usr/bin/tesseract',
 
       devicesPath: path.join(BASE_PATH, 'data/devices.json'),
+      jobSettingsPath: path.join(BASE_PATH, 'data/job-settings.json'),
       outputDirectory: path.join(BASE_PATH, 'data/output'),
       thumbnailDirectory: path.join(BASE_PATH, 'data/thumbnail'),
       previewDirectory: path.join(BASE_PATH, 'data/preview'),
@@ -99,6 +100,7 @@ module.exports = class Config {
       paperSizes: [
         { name: 'A3 (@:paper-size.portrait)', dimensions: { x: 297, y: 420 } },
         { name: 'A4 (@:paper-size.portrait)', dimensions: { x: 210, y: 297 } },
+        { name: 'A4 (@:paper-size.landscape)', dimensions: { x: 297, y: 210 } },
         { name: 'A5 (@:paper-size.portrait)', dimensions: { x: 148, y: 210 } },
         { name: 'A5 (@:paper-size.landscape)', dimensions: { x: 210, y: 148 } },
         { name: 'A6 (@:paper-size.portrait)', dimensions: { x: 105, y: 148 } },

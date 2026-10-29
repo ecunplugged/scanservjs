@@ -166,3 +166,43 @@ describe('Request', () => {
   });
 
 });
+
+describe('Fujitsu A4 media geometry', () => {
+  const makeRequest = (fixture, params) => {
+    const device = Device.from(FileInfo.create(`test/resource/${fixture}`).toText());
+    const context = new Context(config, [device], new UserOptions());
+    return new Request(context, { params: { deviceId: device.id, ...params } });
+  };
+
+  it('preserves A4 height on fi-7260 ADF despite cached Letter scan-area limits', () => {
+    const request = makeRequest('scanimage-a12-adf.txt', {
+      source: 'ADF Duplex', pageWidth: 210, pageHeight: 297, width: 210, height: 297
+    });
+    assert.strictEqual(request.params.width, 210);
+    assert.strictEqual(request.params.height, 297);
+    assert.strictEqual(request.params.pageHeight, 297);
+    const Command = require('../src/classes/scanimage-command');
+    const command = new Command(config);
+    command.scanimage._version = '1.0.31';
+    const text = command.scan(request);
+    assert(text.includes('--page-height 297'));
+    assert(text.includes('-y 297'));
+    assert(text.indexOf('--page-height') < text.indexOf('-y'));
+  });
+
+  it('still bounds ADF dimensions by the requested media', () => {
+    const request = makeRequest('scanimage-a12-adf.txt', {
+      source: 'ADF Front', pageWidth: 210, pageHeight: 297, width: 400, height: 400
+    });
+    assert.strictEqual(request.params.width, 210);
+    assert.strictEqual(request.params.height, 297);
+  });
+
+  it('keeps physical flatbed limits for near-A4 devices', () => {
+    const request = makeRequest('scanimage-a12-flatbed.txt', {
+      source: 'Flatbed', pageWidth: 210, pageHeight: 297, width: 210, height: 297
+    });
+    assert(request.params.height <= 297);
+    assert(request.params.height > 296);
+  });
+});

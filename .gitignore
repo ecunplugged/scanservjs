@@ -61,6 +61,7 @@ app-server/data/temp/*
 app-server/data/thumbnail/*
 app-server/data/preview/*.tif
 **/config.local.js
+app-server/data/job-settings.json*
 var
 debian
 

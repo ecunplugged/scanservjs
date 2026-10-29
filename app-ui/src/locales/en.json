@@ -218,5 +218,26 @@
     "zh": "简体中文",
     "zh-TW": "正體中文（臺灣）",
     "test": "Test"
+  },
+  "jobs": {
+    "load": "Load",
+    "preset": "Scan preset",
+    "name": "Name (same name replaces preset)",
+    "save": "Save",
+    "delete": "Delete preset",
+    "saved": "Saved",
+    "device-missing": "The scanner for this preset is unavailable."
+  },
+  "paperless": {
+    "title": "Paperless-ngx setup",
+    "enabled": "Automatically send scans to Paperless",
+    "url": "Paperless base URL",
+    "token": "API token",
+    "token-saved": "Token saved. Leave blank to keep it.",
+    "delete": "Delete local file after confirmed Paperless import",
+    "description": "Setup applies to all users. Files are retained on errors. Use the Paperless button in the file list to check pending imports again.",
+    "success": "Paperless import confirmed.",
+    "pending": "Paperless is still processing. Local file retained; check again from the file list.",
+    "disabled": "Paperless is disabled."
   }
 }

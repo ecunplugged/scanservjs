@@ -61,6 +61,19 @@
           item-title="text"
           item-value="value" />
 
+        <v-select v-if="geometry" :model-value="selectedPaperSize"
+          :items="paperSizes" item-title="name" return-object
+          :label="$t('scan.paperSize')" @update:model-value="updatePaperSize" />
+
+        <v-select v-model="selectedPreset" :items="presets" item-title="name" item-value="id"
+          :label="$t('jobs.preset')" @update:model-value="loadPreset" />
+        <v-text-field v-model="presetName" :label="$t('jobs.name')" maxlength="80" />
+        <div class="d-flex flex-wrap mb-4">
+          <v-btn :disabled="!selectedPreset" @click="loadPreset(selectedPreset)">{{ $t('jobs.load') }}</v-btn>
+          <v-btn :disabled="!presetName.trim()" @click="savePreset">{{ $t('jobs.save') }}</v-btn>
+          <v-btn :disabled="!selectedPreset" @click="deletePreset">{{ $t('jobs.delete') }}</v-btn>
+        </div>
+
         <div class="d-flex flex-row-reverse flex-wrap">
           <v-btn color="blue" class="ml-1 mb-1" @click="scan(1)">{{ $t('scan.btn-scan') }} <v-icon class="ml-2" :icon="mdiCamera" /></v-btn>
           <v-btn v-if="geometry" color="green" class="ml-1 mb-1" @click="createPreview">{{ $t('scan.btn-preview') }} <v-icon class="ml-2" :icon="mdiMagnify" /></v-btn>
@@ -83,20 +96,6 @@
           <v-text-field v-model="request.params.left" :label="$t('scan.left')" type="number" step="any" @blur="onCoordinatesChange" />
           <v-text-field v-model="request.params.width" :label="$t('scan.width')" type="number" step="any" @blur="onCoordinatesChange" />
           <v-text-field v-model="request.params.height" :label="$t('scan.height')" type="number" step="any" @blur="onCoordinatesChange" />
-
-          <v-menu offset-y>
-            <template #activator="{ props }">
-              <v-btn color="primary" class="mb-4" v-bind="props">{{ $t('scan.paperSize') }}</v-btn>
-            </template>
-            <v-list dense>
-              <v-list-item
-                v-for="(item, index) in paperSizes"
-                :key="index"
-                @click="updatePaperSize(item)">
-                <v-list-item-title>{{ item.name }}</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-menu>
         </template>
 
         <template v-if="'--brightness' in device.features">
@@ -105,7 +104,7 @@
             :min="device.features['--brightness']['limits'][0]"
             :max="device.features['--brightness']['limits'][1]">
             <template #prepend>
-              <v-text-field v-model="request.params.brightness" 
+              <v-text-field v-model="request.params.brightness"
                 :label="$t('scan.brightness')" style="width: 60px" type="number" />
             </template>
           </v-slider>
@@ -117,7 +116,7 @@
             :min="device.features['--contrast']['limits'][0]"
             :max="device.features['--contrast']['limits'][1]">
             <template #prepend>
-              <v-text-field v-model="request.params.contrast" 
+              <v-text-field v-model="request.params.contrast"
                 :label="$t('scan.contrast')" style="width: 60px" type="number" />
             </template>
           </v-slider>
@@ -191,6 +190,9 @@ export default {
       device: device,
       img: null,
       request: request,
+      presets: [],
+      selectedPreset: null,
+      presetName: '',
       preview: {
         timer: 0,
         width: 400,
@@ -200,14 +202,39 @@ export default {
   },
 
   computed: {
+    selectedPaperSize() {
+      return (this.paperSizes || []).find(p => Math.abs(p.dimensions.x - this.request.params.width) < 0.5
+        && Math.abs(p.dimensions.y - this.request.params.height) < 0.5) || null;
+    },
+
     geometry() {
       return ['-x', '-y', '-l', '-t'].every(s => s in this.device.features);
     },
 
+    paperCapacity() {
+      if (!this.geometry) {
+        return undefined;
+      }
+      const features = this.device.features;
+      const adf = /^ADF/i.test(this.request.params.source || '');
+      return {
+        width: adf && features['--page-width'] ? features['--page-width'].limits[1] : features['-x'].limits[1],
+        height: adf && features['--page-height'] ? features['--page-height'].limits[1] : features['-y'].limits[1]
+      };
+    },
+
     deviceSize() {
-      return !this.geometry ? undefined : {
-        width: this.device.features['-x'].limits[1],
-        height: this.device.features['-y'].limits[1]
+      if (!this.geometry) {
+        return undefined;
+      }
+      // Fujitsu advertises the current media size as the scan-area limit.
+      // Give A4 a usable preview without stretching it to the long-page maximum.
+      const adf = /^ADF/i.test(this.request.params.source || '');
+      return {
+        width: Math.min(this.paperCapacity.width, Math.max(this.device.features['-x'].limits[1],
+          adf ? Number(this.request.params.pageWidth || 210) : 0)),
+        height: Math.min(this.paperCapacity.height, Math.max(this.device.features['-y'].limits[1],
+          adf ? Number(this.request.params.pageHeight || 297) : 0))
       };
     },
 
@@ -261,13 +288,14 @@ export default {
       }
 
       const deviceSize = {
-        x: this.device.features['-x'].limits[1],
-        y: this.device.features['-y'].limits[1]
+        x: this.paperCapacity.width,
+        y: this.paperCapacity.height
       };
 
       return this.context.paperSizes
-        .filter(paper => paper.dimensions.x <= deviceSize.x && paper.dimensions.y <= deviceSize.y)
-        .map(paper => {
+        .filter(paper => paper.dimensions.x <= deviceSize.x + 0.5 && paper.dimensions.y <= deviceSize.y + 0.5)
+        .map(original => {
+          const paper = { ...original };
           const variables = (paper.name.match(/@:[a-z-.]+/ig) || []).map(s => s.substr(2));
           variables.forEach(v => {
             paper.name = paper.name.replaceAll(`@:${v}`, this.$t(v));
@@ -315,6 +343,7 @@ export default {
   },
 
   mounted() {
+    this.readPresets();
     this._resizePreview();
     this.readContext().then(() => {
       this.readPreview();
@@ -326,6 +355,56 @@ export default {
   },
 
   methods: {
+    async readPresets() {
+      try {
+        this.presets = await Common.fetch('api/v1/presets');
+      } catch (error) {
+        this.notify({ type: 'e', message: error });
+      }
+    },
+
+    async savePreset() {
+      try {
+        const preset = await Common.fetch('api/v1/presets', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: this.presetName, request: this.request })
+        });
+        await this.readPresets();
+        this.selectedPreset = preset.id;
+        this.notify({ type: 'i', message: this.$t('jobs.saved') });
+      } catch (error) {
+        this.notify({ type: 'e', message: error });
+      }
+    },
+
+    async deletePreset() {
+      try {
+        await Common.fetch(`api/v1/presets/${this.selectedPreset}`, { method: 'DELETE' });
+        this.selectedPreset = null;
+        this.presetName = '';
+        await this.readPresets();
+      } catch (error) {
+        this.notify({ type: 'e', message: error });
+      }
+    },
+
+    loadPreset(id) {
+      const preset = this.presets.find(p => p.id === id);
+      if (!preset) {
+        return;
+      }
+      const device = this.context.devices.find(d => d.id === preset.request.params.deviceId);
+      if (!device) {
+        this.notify({ type: 'e', message: this.$t('jobs.device-missing') });
+        return;
+      }
+      this.device = device;
+      this.request = Request.create(Common.clone(preset.request), device);
+      this.presetName = preset.name;
+      // Remount to discard queued crop events from the previous selection.
+      this.preview.key += 1;
+    },
+
     _resizePreview() {
       const paperRatio = this.geometry
         ? this.deviceSize.width / this.deviceSize.height
@@ -562,6 +641,11 @@ export default {
           'Content-Type': 'application/json'
         }
       }).then((response) => {
+        if (response && response.paperless && response.paperless.status !== 'disabled') {
+          const result = response.paperless;
+          this.notify({ type: result.status === 'error' ? 'e' : 'i',
+            message: result.message || this.$t(`paperless.${result.status}`) });
+        }
         if (response && 'index' in response) {
           const options = {
             message: this.$t('scan.message:turn-documents'),
@@ -598,9 +682,13 @@ export default {
 
     updatePaperSize(value) {
       if (value.dimensions) {
-        this.request.params.width = value.dimensions.x;
-        this.request.params.height = value.dimensions.y;
-        this.onCoordinatesChange();
+        this.request.params.left = 0;
+        this.request.params.top = 0;
+        this.request.params.pageWidth = Math.min(value.dimensions.x, this.paperCapacity.width);
+        this.request.params.pageHeight = Math.min(value.dimensions.y, this.paperCapacity.height);
+        this.request.params.width = this.request.params.pageWidth;
+        this.request.params.height = this.request.params.pageHeight;
+        this.$nextTick(this.onCoordinatesChange);
       }
     }
   }

@@ -69,6 +69,7 @@
  * @property {string} scanimage
  * @property {string} convert
  * @property {string} tesseract
+ * @property {string} jobSettingsPath
  * @property {string} devicesPath
  * @property {string} outputDirectory
  * @property {string} thumbnailDirectory
@@ -112,6 +113,7 @@
  * @property {string} [image]
  * @property {number} [index]
  * @property {FileInfo} [file]
+ * @property {{status: string, deleted: boolean, documentId?: number, taskId?: string, message?: string}} [paperless]
  */
 
 /**

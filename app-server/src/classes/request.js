@@ -56,6 +56,18 @@ module.exports = class Request {
     assertContains(device.settings['pipeline'].options, this.pipeline, 'Invalid pipeline');
     assertContains(device.settings['batchMode'].options, this.batch, 'Invalid batchMode');
 
+    // Fujitsu ADF geometry can be capped by its current (often Letter) media
+    // size. --page-width/height are emitted before -x/-y by ScanimageCommand.
+    const areaFeature = (axis, pageOption, requestedPage) => {
+      const feature = features[axis];
+      if (/^ADF/i.test(data.params.source || features['--source'] && features['--source'].default || '')
+        && features[pageOption] && Number.isFinite(Number(requestedPage)) && Number(requestedPage) > 0) {
+        const max = constrainWithFeature(Number(requestedPage), features[pageOption]);
+        return { ...feature, limits: [feature.limits[0], max] };
+      }
+      return feature;
+    };
+
     if ('-t' in features) {
       this.params.top = constrainWithFeature(data.params.top || features['-t'].limits[0], features['-t']);
     }
@@ -63,10 +75,10 @@ module.exports = class Request {
       this.params.left = constrainWithFeature(data.params.left || features['-l'].limits[0], features['-l']);
     }
     if ('-x' in features) {
-      this.params.width = constrainWithFeature(data.params.width || features['-x'].limits[1], features['-x']);
+      this.params.width = constrainWithFeature(data.params.width || features['-x'].limits[1], areaFeature('-x', '--page-width', data.params.pageWidth));
     }
     if ('-y' in features) {
-      this.params.height = constrainWithFeature(data.params.height || features['-y'].limits[1], features['-y']);
+      this.params.height = constrainWithFeature(data.params.height || features['-y'].limits[1], areaFeature('-y', '--page-height', data.params.pageHeight));
     }
     if ('--page-height' in features) {
       this.params.pageHeight = constrainWithFeature(data.params.pageHeight, features['--page-height']);

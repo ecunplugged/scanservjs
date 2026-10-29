@@ -64,6 +64,7 @@
       {{ $d(new Date(item.lastModified), 'long') }}
     </template>
     <template #[`item.actions`]="{ item }">
+      <v-btn v-if="paperlessEnabled" size="small" variant="text" @click="sendPaperless(item)">Paperless</v-btn>
       <v-icon class="mr-2" :icon="mdiDownload" @click="open(item)" />
       <v-icon class="mr-2" :icon="mdiPencil" @click="fileRename(item)" />
       <v-icon class="mr-2" :icon="mdiDelete" @click="fileRemove(item)" />
@@ -115,7 +116,8 @@ export default {
         show: storage.settings.thumbnails.show,
         size: storage.settings.thumbnails.size
       },
-      actions: []
+      actions: [],
+      paperlessEnabled: false
     };
   },
 
@@ -178,9 +180,25 @@ export default {
   mounted() {
     this.fileList();
     this.actionList();
+    Common.fetch('api/v1/paperless').then(settings => {
+      this.paperlessEnabled = settings.enabled;
+    }).catch(error => this.$emit('notify', { type: 'e', message: error }));
   },
 
   methods: {
+    async sendPaperless(file) {
+      this.$emit('mask', 1);
+      try {
+        const result = await Common.fetch(`api/v1/files/${encodeURIComponent(file.name)}/paperless`, { method: 'POST' });
+        this.$emit('notify', { type: 'i', message: this.$t(`paperless.${result.status}`) });
+        this.fileList();
+      } catch (error) {
+        this.$emit('notify', { type: 'e', message: error });
+      } finally {
+        this.$emit('mask', -1);
+      }
+    },
+
     actionList() {
       this.$emit('mask', 1);
       Common.fetch('api/v1/context').then(context => {
