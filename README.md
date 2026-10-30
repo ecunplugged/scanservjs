@@ -14,7 +14,9 @@ das Abhängigkeiten installiert und den systemd-Dienst einrichtet.
 [![GitHub stars](https://img.shields.io/github/stars/sbs20/scanservjs?label=Github%20stars&style=for-the-badge)](https://github.com/sbs20/scanservjs)
 [![GitHub](https://img.shields.io/github/license/sbs20/scanservjs?style=for-the-badge)](https://github.com/sbs20/scanservjs/blob/master/LICENSE.md)
 
-![screenshot](https://github.com/sbs20/scanservjs/raw/master/docs/screen0.jpg)
+![Dashboard mit Scan-Voreinstellungen und Schaltern für Paperless-Übertragung und lokale Aufbewahrung](docs/dashboard.png)
+
+Dashboard ab Version 3.3.3; Screenshot aus einer Testinstallation mit Beispiel-Voreinstellungen.
 
 Copyright 2016-2026 [Sam Strachan](https://github.com/sbs20)
 
@@ -46,6 +48,22 @@ complicated installation.
 
 ## Features
 
+### Erweiterungen dieses Forks
+
+* Dashboard als Startseite mit großen Direkt-Scan-Buttons für jede gespeicherte Voreinstellung
+* Voreinstellungen speichern, abrufen, bearbeiten, umbenennen und löschen
+* A4 im Hoch- und Querformat; Korrekturen für die ADF-Formaterkennung
+* Paperless-ngx-Anbindung mit bestätigtem Import und optionalem lokalem Löschen
+* Zwei dauerhaft gespeicherte Dashboard-Schalter: Paperless-Übertragung und automatisches Löschen separat steuern; wahlweise ausschließlich lokal speichern oder eine lokale Kopie behalten
+* Fortschrittsanzeige für Scannen, Verarbeitung, Übertragung und Paperless-Import mit Zeit im aktuellen Schritt
+* Begrenzte Wartezeiten und Wiederaufnahme offener Paperless-Importprüfungen im Hintergrund
+* Optionale Anmeldung, standardmäßig ausgeschaltet
+* Debian-Installations- und Update-Skript mit Abhängigkeiten, systemd-Autostart und Erhalt vorhandener Einstellungen und Scans
+
+[Release 3.3.3 mit Debian-Paket und Installationsskript](https://github.com/ecunplugged/scanservjs/releases/tag/v3.3.3)
+
+### Weitere Funktionen aus dem Upstream
+
 * Cropping
 * Source selection (Flatbed / ADF)
 * Resolution
@@ -76,7 +94,8 @@ It supports any
 
 * Debian:
   ```sh
-  curl -s https://raw.githubusercontent.com/sbs20/scanservjs/master/bootstrap.sh | sudo bash -s -- -v latest
+  curl -fsSL https://raw.githubusercontent.com/ecunplugged/scanservjs/master/scripts/install-debian.sh -o install-scanservjs-debian.sh
+  sudo bash install-scanservjs-debian.sh
   ```
 * Arch:
   ```sh
@@ -155,9 +174,10 @@ You can create and customise your own pipelines.
 
 Any scanned files will be saved in a flat directory which has a simple web view
 available on this page. The intended usage of the app is to allow the user to
-save their scans locally - i.e. to download the files. The app will never delete
-these files, but if you run under docker then unless volume mapping is specified
-then the files may be lost when you run a new version.
+save their scans locally - i.e. to download the files. This fork can optionally delete local files after Paperless confirms a successful
+import. Use the dashboard switches to keep scans local or retain a local copy
+after transfer. Under Docker, persistent volume mapping is required to keep
+files across container replacement.
 
 Furthermore, users in real life will want to store their scans with their own
 names, directory structures and cloud services or NAS devices. The permutations
