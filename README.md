@@ -16,7 +16,7 @@ das Abhängigkeiten installiert und den systemd-Dienst einrichtet.
 
 ![Dashboard mit Scan-Voreinstellungen und Schaltern für Paperless-Übertragung und lokale Aufbewahrung](docs/dashboard.png)
 
-Dashboard ab Version 3.3.3; Screenshot aus einer Testinstallation mit Beispiel-Voreinstellungen.
+Dashboard mit kompakten Paperless-Schaltern; Screenshot aus einer Testinstallation mit Beispiel-Voreinstellungen.
 
 Copyright 2016-2026 [Sam Strachan](https://github.com/sbs20)
 

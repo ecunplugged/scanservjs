@@ -19,10 +19,10 @@ abgeschlossener Scan, und die Oberfläche gibt den nächsten Versuch wieder frei
 
 ## Paperless direkt im Dashboard steuern
 
-Ab Version 3.3.3 enthält **Ablage der Scans** zwei Schalter:
+Ab Version 3.3.3 enthält das Dashboard zwei kompakte Schalter neben **Voreinstellungen verwalten**:
 
-- **An Paperless übertragen** aus: Neue Scans bleiben ausschließlich lokal unter **Dateien**.
-- Übertragung an und **Nach erfolgreichem Import lokal löschen** aus: Scans werden an Paperless gesendet und bleiben zusätzlich lokal erhalten.
+- **Paperless** aus: Neue Scans bleiben ausschließlich lokal unter **Dateien**.
+- Übertragung an und **autom. löschen** aus: Scans werden an Paperless gesendet und bleiben zusätzlich lokal erhalten.
 - Beide an: Die lokale Datei wird erst nach bestätigtem erfolgreichem Import gelöscht.
 
 Die Auswahl wird sofort serverseitig gespeichert, gilt auch für manuelle Scans

@@ -6,27 +6,30 @@
         <p class="text-body-1 text-medium-emphasis">{{ $t('dashboard.description') }}</p>
       </div>
       <v-spacer />
-      <v-btn to="/presets" variant="outlined">{{ $t('dashboard.manage') }}</v-btn>
-      <v-btn to="/scan" variant="text">{{ $t('dashboard.manual') }}</v-btn>
+      <div class="dashboard-actions">
+        <v-btn to="/presets" variant="outlined">{{ $t('dashboard.manage') }}</v-btn>
+        <div v-if="paperless" class="dashboard-switches">
+          <v-switch :model-value="paperless.enabled" :label="$t('dashboard.transfer-toggle')"
+            :title="$t(!paperless.enabled ? 'dashboard.local-only' : paperless.deleteAfterTransfer ? 'dashboard.delete-help' : 'dashboard.keep-help')"
+            class="dashboard-switch" size="small" density="compact" color="primary" hide-details
+            :disabled="saving || scanJob.busy" @update:model-value="saveFlag('enabled', $event)" />
+          <v-switch :model-value="paperless.deleteAfterTransfer" :label="$t('dashboard.delete-toggle')"
+            :title="$t('dashboard.delete-help')"
+            class="dashboard-switch" size="small" density="compact" color="primary" hide-details
+            :disabled="saving || scanJob.busy || !paperless.enabled" @update:model-value="saveFlag('deleteAfterTransfer', $event)" />
+        </div>
+        <v-btn to="/scan" variant="text">{{ $t('dashboard.manual') }}</v-btn>
+      </div>
     </div>
 
     <v-alert v-if="loadError" type="error" class="mb-4">
       {{ loadError }} <v-btn variant="text" @click="load">{{ $t('dashboard.retry') }}</v-btn>
     </v-alert>
     <v-progress-linear v-if="loading" indeterminate class="mb-4" />
-    <v-card v-if="paperless" variant="outlined" class="pa-5 mb-6">
-      <h2 class="text-h6 mb-2">{{ $t('dashboard.paperless-title') }}</h2>
-      <v-switch :model-value="paperless.enabled" :label="$t('dashboard.transfer-toggle')"
-        color="primary" hide-details :disabled="saving || scanJob.busy" @update:model-value="saveFlag('enabled', $event)" />
-      <v-switch :model-value="paperless.deleteAfterTransfer" :label="$t('dashboard.delete-toggle')"
-        color="primary" hide-details :disabled="saving || scanJob.busy || !paperless.enabled" @update:model-value="saveFlag('deleteAfterTransfer', $event)" />
-      <p class="mt-3">{{ $t(!paperless.enabled ? 'dashboard.local-only' : paperless.deleteAfterTransfer ? 'dashboard.delete-help' : 'dashboard.keep-help') }}</p>
-      <p v-if="!paperless.tokenConfigured || !paperless.url" class="mt-2">
-        {{ $t('dashboard.configure-help') }} <router-link to="/settings">{{ $t('navigation.settings') }}</router-link>
-      </p>
-      <p class="text-body-2 text-medium-emphasis mt-2">{{ $t('dashboard.shared-help') }}</p>
-      <v-alert v-if="saveError" type="error" class="mt-3">{{ saveError }}</v-alert>
-    </v-card>
+    <v-alert v-if="paperless && (!paperless.tokenConfigured || !paperless.url)" type="info" variant="tonal" class="mb-4">
+      {{ $t('dashboard.configure-help') }} <router-link to="/settings">{{ $t('navigation.settings') }}</router-link>
+    </v-alert>
+    <v-alert v-if="saveError" type="error" class="mb-4">{{ saveError }}</v-alert>
     <v-card v-if="scanJob.stage !== 'idle'" class="pa-5 mb-6 progress-card" variant="outlined" role="status" aria-live="polite">
       <h2 class="text-h6 mb-2">{{ $t('progress.title') }}</h2>
       <div class="progress-status">{{ $t(`progress.${scanJob.stage}`) }}</div>
@@ -156,6 +159,9 @@ export default {
 </script>
 
 <style scoped>
+.dashboard-actions, .dashboard-switches { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.dashboard-switch { flex: 0 0 auto; }
+.dashboard-switch :deep(.v-label) { font-size: 0.875rem; white-space: nowrap; }
 .progress-status { font-size: 1.35rem; font-weight: 600; }
 .progress-steps { display: flex; flex-wrap: wrap; gap: 20px; list-style: none; padding: 0; }
 .progress-steps li { opacity: 0.55; }
