@@ -253,6 +253,14 @@
     "start": "Scan now",
     "empty": "No presets saved yet.",
     "completed": "Scan completed:",
+    "paperless-title": "Scan storage",
+    "transfer-toggle": "Send to Paperless",
+    "delete-toggle": "Delete locally after successful import",
+    "local-only": "Local storage only: scans stay in scanservjs and are not sent to Paperless.",
+    "keep-help": "Send to Paperless and keep the local file in scanservjs.",
+    "delete-help": "Delete the local file only after Paperless confirms the import.",
+    "configure-help": "To enable transfers, configure the Paperless URL and API token first:",
+    "shared-help": "Changes are saved immediately and apply to all scan jobs and browsers.",
     "retry": "Retry"
   },
   "authentication": {

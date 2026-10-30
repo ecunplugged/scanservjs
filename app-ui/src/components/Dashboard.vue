@@ -14,6 +14,19 @@
       {{ loadError }} <v-btn variant="text" @click="load">{{ $t('dashboard.retry') }}</v-btn>
     </v-alert>
     <v-progress-linear v-if="loading" indeterminate class="mb-4" />
+    <v-card v-if="paperless" variant="outlined" class="pa-5 mb-6">
+      <h2 class="text-h6 mb-2">{{ $t('dashboard.paperless-title') }}</h2>
+      <v-switch :model-value="paperless.enabled" :label="$t('dashboard.transfer-toggle')"
+        color="primary" hide-details :disabled="saving || scanJob.busy" @update:model-value="saveFlag('enabled', $event)" />
+      <v-switch :model-value="paperless.deleteAfterTransfer" :label="$t('dashboard.delete-toggle')"
+        color="primary" hide-details :disabled="saving || scanJob.busy || !paperless.enabled" @update:model-value="saveFlag('deleteAfterTransfer', $event)" />
+      <p class="mt-3">{{ $t(!paperless.enabled ? 'dashboard.local-only' : paperless.deleteAfterTransfer ? 'dashboard.delete-help' : 'dashboard.keep-help') }}</p>
+      <p v-if="!paperless.tokenConfigured || !paperless.url" class="mt-2">
+        {{ $t('dashboard.configure-help') }} <router-link to="/settings">{{ $t('navigation.settings') }}</router-link>
+      </p>
+      <p class="text-body-2 text-medium-emphasis mt-2">{{ $t('dashboard.shared-help') }}</p>
+      <v-alert v-if="saveError" type="error" class="mt-3">{{ saveError }}</v-alert>
+    </v-card>
     <v-card v-if="scanJob.stage !== 'idle'" class="pa-5 mb-6 progress-card" variant="outlined" role="status" aria-live="polite">
       <h2 class="text-h6 mb-2">{{ $t('progress.title') }}</h2>
       <div class="progress-status">{{ $t(`progress.${scanJob.stage}`) }}</div>
@@ -41,7 +54,7 @@
     <v-row>
       <v-col v-for="(preset, index) in presets" :key="preset.id" cols="12" sm="6" lg="4">
         <v-btn class="scan-tile pa-6" block height="auto" variant="tonal"
-          :color="colors[index % colors.length]" :disabled="scanJob.busy"
+          :color="colors[index % colors.length]" :disabled="scanJob.busy || saving || loading"
           :loading="scanJob.busy && scanJob.presetId === preset.id" @click="start(preset)">
           <span class="d-flex flex-column align-start text-left w-100">
             <v-icon :icon="mdiScanner" size="36" class="mb-4" />
@@ -64,12 +77,13 @@ export default {
   name: 'Dashboard',
   inject: ['scanJob'],
   data() {
-    return { now: Date.now(), ticker: null, presets: [], loading: false, loadError: '', mdiScanner,
+    return { now: Date.now(), ticker: null, paperless: null, saving: false, saveError: '', presets: [], loading: false, loadError: '', mdiScanner,
       colors: ['primary', 'teal', 'deep-purple', 'indigo', 'blue-grey', 'green'] };
   },
   computed: {
     steps() {
-      return this.scanJob.result && this.scanJob.result.paperless && this.scanJob.result.paperless.status === 'disabled'
+      return (this.scanJob.result && this.scanJob.result.paperless && this.scanJob.result.paperless.status === 'disabled')
+        || (!this.scanJob.result && this.paperless && !this.paperless.enabled)
         ? ['scanning', 'processing'] : ['scanning', 'processing', 'uploading', 'paperless_processing'];
     },
     stepIndex() {
@@ -105,11 +119,26 @@ export default {
       this.loading = true;
       this.loadError = '';
       try {
-        this.presets = await Common.fetch('api/v1/presets');
+        const [presets, paperless] = await Promise.all([Common.fetch('api/v1/presets'), Common.fetch('api/v1/paperless')]);
+        this.presets = presets;
+        this.paperless = paperless;
       } catch (error) {
         this.loadError = error.message;
       } finally {
         this.loading = false;
+      }
+    },
+    async saveFlag(key, value) {
+      this.saving = true;
+      this.saveError = '';
+      try {
+        this.paperless = await Common.fetch('api/v1/paperless', {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [key]: value })
+        });
+      } catch (error) {
+        this.saveError = error.message;
+      } finally {
+        this.saving = false;
       }
     },
     details(preset) {

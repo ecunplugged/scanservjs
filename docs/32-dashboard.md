@@ -17,6 +17,28 @@ abschließen oder abbrechen. Das gilt auch bei einem Seitenwechsel innerhalb der
 Anwendung. Fehler werden als Meldung angezeigt; sie gelten nicht als erfolgreich
 abgeschlossener Scan, und die Oberfläche gibt den nächsten Versuch wieder frei.
 
+## Paperless direkt im Dashboard steuern
+
+Ab Version 3.3.3 enthält **Ablage der Scans** zwei Schalter:
+
+- **An Paperless übertragen** aus: Neue Scans bleiben ausschließlich lokal unter **Dateien**.
+- Übertragung an und **Nach erfolgreichem Import lokal löschen** aus: Scans werden an Paperless gesendet und bleiben zusätzlich lokal erhalten.
+- Beide an: Die lokale Datei wird erst nach bestätigtem erfolgreichem Import gelöscht.
+
+Die Auswahl wird sofort serverseitig gespeichert, gilt auch für manuelle Scans
+und bleibt nach Neustarts und Updates erhalten. URL und API-Token werden weiterhin
+unter **Einstellungen** eingerichtet. Ohne diese Angaben lässt sich die Übertragung
+nicht aktivieren. Bei ausgeschalteter Übertragung ist der Löschschalter deaktiviert;
+seine bisherige Auswahl bleibt für das spätere Einschalten erhalten.
+
+Während eines laufenden Dashboard-Auftrags sind die Schalter gesperrt. Bereits
+an Paperless übergebene Dokumente werden durch das Abschalten nicht zurückgerufen.
+Noch offene Importprüfungen ruhen bei ausgeschalteter Übertragung und werden nach
+dem Einschalten wieder aufgenommen. Bereits gelöschte Dateien werden nicht wiederhergestellt.
+
+`PATCH /api/v1/paperless` akzeptiert `enabled` und/oder `deleteAfterTransfer`
+als Boolean. URL, Token und der jeweils andere Schalter bleiben unverändert.
+
 ## Fortschritt und Paperless-Abschluss
 
 Auf dem Dashboard wird der jeweils echte Bearbeitungsschritt angezeigt:

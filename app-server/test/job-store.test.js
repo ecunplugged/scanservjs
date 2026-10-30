@@ -61,6 +61,35 @@ describe('Scan job settings', () => {
     assert.strictEqual(fs.statSync(store.filename).mode & 0o777, 0o600);
   });
 
+  it('persists dashboard switches without replacing credentials or the other switch', () => {
+    store.configure({ enabled: true, url: 'https://paperless.test', token: 'secret', deleteAfterTransfer: true });
+    store.configureFlags({ deleteAfterTransfer: false });
+    assert.strictEqual(store.settings().enabled, true);
+    store.configureFlags({ enabled: false });
+    const restored = new JobStore(store.filename);
+    assert.strictEqual(restored.settings().enabled, false);
+    assert.strictEqual(restored.settings().deleteAfterTransfer, false);
+    assert.strictEqual(restored.data.paperless.token, 'secret');
+    assert.strictEqual(restored.data.paperless.url, 'https://paperless.test');
+    assert(!JSON.stringify(restored.settings()).includes('secret'));
+  });
+
+  it('rejects enabling without setup and rejects malformed dashboard switches', () => {
+    assert.throws(() => store.configureFlags({ enabled: true }));
+    for (const input of [null, {}, { enabled: 'false' }, { token: 'changed' }]) {
+      assert.throws(() => store.configureFlags(input));
+    }
+    assert.strictEqual(store.settings().enabled, false);
+  });
+
+  it('restores switches if saving fails', () => {
+    store.save = () => {
+      throw new Error('Disk full');
+    };
+    assert.throws(() => store.configureFlags({ deleteAfterTransfer: true }));
+    assert.strictEqual(store.settings().deleteAfterTransfer, false);
+  });
+
   it('rejects unsafe URLs, invalid settings and missing credentials', () => {
     const settings = { enabled: true, url: 'https://paperless.test', token: 'secret', deleteAfterTransfer: false };
     for (const url of ['file:///etc/passwd', 'http://user:pass@test', 'http://test?secret=x', 'http://test#x']) {

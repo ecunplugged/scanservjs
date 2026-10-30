@@ -218,6 +218,14 @@
     "start": "Jetzt scannen",
     "empty": "Noch keine Voreinstellungen gespeichert.",
     "completed": "Scan abgeschlossen:",
+    "paperless-title": "Ablage der Scans",
+    "transfer-toggle": "An Paperless übertragen",
+    "delete-toggle": "Nach erfolgreichem Import lokal löschen",
+    "local-only": "Nur lokal speichern: Die Scans bleiben in scanservjs und werden nicht an Paperless gesendet.",
+    "keep-help": "An Paperless senden und die lokale Datei in scanservjs behalten.",
+    "delete-help": "Die lokale Datei erst nach bestätigtem Import durch Paperless löschen.",
+    "configure-help": "Zum Aktivieren zuerst Paperless-URL und API-Token einrichten:",
+    "shared-help": "Änderungen werden sofort gespeichert und gelten für alle Scan-Aufträge und Browser.",
     "retry": "Erneut versuchen"
   },
   "authentication": {

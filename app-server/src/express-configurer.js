@@ -114,6 +114,10 @@ const EndpointSpecs = [
     callback: async (req, res) => res.send(store.settings())
   },
   {
+    method: 'patch', path: '/api/v1/paperless',
+    callback: async (req, res) => res.send(store.configureFlags(req.body))
+  },
+  {
     method: 'put', path: '/api/v1/paperless',
     callback: async (req, res) => res.send(store.configure(req.body))
   },
@@ -287,7 +291,7 @@ module.exports = class ExpressConfigurer {
       this.app[spec.method](spec.path, async (req, res) => {
         log.info(['/api/v1/paperless', '/api/v1/authentication'].includes(spec.path) ? { method: req.method, path: req.path } : formatForLog(req));
         try {
-          if (spec.method === 'put' && ['/api/v1/paperless', '/api/v1/authentication'].includes(spec.path) && req.headers.origin
+          if (['put', 'patch'].includes(spec.method) && ['/api/v1/paperless', '/api/v1/authentication'].includes(spec.path) && req.headers.origin
             && new URL(req.headers.origin).host !== req.get('host')) {
             res.status(403).send({ message: 'Setup requires a same-host request' });
             return;

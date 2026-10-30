@@ -78,6 +78,15 @@ module.exports = class JobStore {
     return { ...settings, tokenConfigured: Boolean(token) };
   }
 
+  configureFlags(input) {
+    if (!input || !Object.keys(input).length
+      || Object.keys(input).some(key => !['enabled', 'deleteAfterTransfer'].includes(key)
+        || typeof input[key] !== 'boolean')) {
+      throw new Error('Invalid Paperless switches');
+    }
+    return this.configure({ ...this.data.paperless, ...input });
+  }
+
   configure(input) {
     if (typeof input.enabled !== 'boolean' || typeof input.deleteAfterTransfer !== 'boolean'
       || typeof input.url !== 'string' || typeof input.token !== 'string') {
@@ -94,8 +103,14 @@ module.exports = class JobStore {
     if (/[\r\n]/.test(token) || (input.enabled && (!url || !token))) {
       throw new Error('Paperless URL and API token are required');
     }
+    const previous = this.data.paperless;
     this.data.paperless = { enabled: input.enabled, url, token, deleteAfterTransfer: input.deleteAfterTransfer };
-    this.save();
+    try {
+      this.save();
+    } catch (error) {
+      this.data.paperless = previous;
+      throw error;
+    }
     return this.settings();
   }
 
