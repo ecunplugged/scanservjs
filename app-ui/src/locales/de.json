@@ -227,5 +227,23 @@
     "password": "Passwort",
     "password-saved": "Passwort gespeichert. Leer lassen, um es beizubehalten.",
     "description": "Standardmäßig ist keine Anmeldung erforderlich. Bei Bedarf Benutzername und Passwort festlegen und die Anmeldung aktivieren."
+  },
+  "progress": {
+    "title": "Fortschritt",
+    "idle": "Bereit",
+    "queued": "Auftrag wird gestartet",
+    "scanning": "Dokumente werden gescannt",
+    "processing": "Scan wird verarbeitet / PDF erstellt",
+    "uploading": "Datei wird an Paperless übertragen",
+    "paperless_processing": "Paperless verarbeitet das Dokument",
+    "cleanup": "Import bestätigt – lokaler Abschluss",
+    "completed": "Auftrag abgeschlossen",
+    "pending": "Übertragen – Paperless-Verarbeitung läuft im Hintergrund weiter",
+    "transfer_error": "Scan fertig, Paperless-Übertragung fehlgeschlagen",
+    "awaiting_pages": "Warten auf weitere Seiten oder Abschluss",
+    "failed": "Auftrag fehlgeschlagen",
+    "cancelled": "Auftrag abgebrochen",
+    "elapsed": "Seit {0} Sekunden in diesem Schritt",
+    "pending-help": "Die lokale Datei bleibt erhalten. Du kannst wieder scannen. Der Import wird serverseitig weiter geprüft; bei Bedarf lässt sich der Status über Paperless in der Dateiliste erneut prüfen."
   }
 }

@@ -11,10 +11,26 @@ module.exports = class Paperless {
     this.pollInterval = options.pollInterval || 2000;
     this.pollTimeout = options.pollTimeout || 120000;
     this.active = new Map();
+    this.requestTimeout = options.requestTimeout || 30000;
   }
 
   request(settings, endpoint, upload) {
     return new Promise((resolve, reject) => {
+      let settled = false;
+      let response;
+      let timer;
+      const finish = (error, value) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        if (error) {
+          reject(error);
+        } else {
+          resolve(value);
+        }
+      };
       const url = new URL(`${settings.url}/${endpoint}`);
       const boundary = `scanservjs-${crypto.randomBytes(16).toString('hex')}`;
       const head = upload ? Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="document"; filename="${encodeURIComponent(path.basename(upload))}"\r\nContent-Type: application/octet-stream\r\n\r\n`) : null;
@@ -27,9 +43,11 @@ module.exports = class Paperless {
       const req = (url.protocol === 'https:' ? https : http).request(url, {
         method: upload ? 'POST' : 'GET', headers
       }, res => {
+        response = res;
         let body = '';
         res.setEncoding('utf8');
-        res.on('error', reject);
+        res.on('error', () => finish(new Error('Paperless response interrupted; local file retained')));
+        res.on('aborted', () => finish(new Error('Paperless response interrupted; local file retained')));
         res.on('data', chunk => {
           body += chunk;
           if (body.length > 1024 * 1024) {
@@ -38,20 +56,26 @@ module.exports = class Paperless {
         });
         res.on('end', () => {
           if (res.statusCode < 200 || res.statusCode >= 300) {
-            reject(new Error(`Paperless HTTP ${res.statusCode}; local file retained`));
+            finish(new Error(`Paperless HTTP ${res.statusCode}; local file retained`));
             return;
           }
           try {
-            resolve(JSON.parse(body));
+            finish(null, JSON.parse(body));
           } catch (error) {
-            reject(new Error('Invalid Paperless response; local file retained'));
+            finish(new Error('Invalid Paperless response; local file retained'));
           }
         });
       });
-      // A total deadline also covers a peer that never finishes a response.
-      const timer = setTimeout(() => req.destroy(new Error('Paperless request timed out; local file retained')), 30000);
-      req.on('close', () => clearTimeout(timer));
-      req.on('error', () => reject(new Error('Paperless connection failed; local file retained')));
+      // Clear the wall-clock deadline only when the whole response settles,
+      // never on ClientRequest.close while the response body is still incomplete.
+      timer = setTimeout(() => {
+        finish(new Error('Paperless request timed out; local file retained'));
+        req.destroy();
+        if (response) {
+          response.destroy();
+        }
+      }, this.requestTimeout);
+      req.on('error', () => finish(new Error('Paperless connection failed; local file retained')));
       if (upload) {
         req.write(head);
         const stream = fs.createReadStream(upload);
@@ -65,11 +89,11 @@ module.exports = class Paperless {
     });
   }
 
-  transfer(file, thumbnail) {
+  transfer(file, thumbnail, onProgress = () => {}) {
     if (this.active.has(file.fullname)) {
       return this.active.get(file.fullname);
     }
-    const task = this.send(file, thumbnail).finally(() => this.active.delete(file.fullname));
+    const task = this.send(file, thumbnail, onProgress).finally(() => this.active.delete(file.fullname));
     this.active.set(file.fullname, task);
     return task;
   }
@@ -102,7 +126,7 @@ module.exports = class Paperless {
     }
   }
 
-  async send(file, thumbnail) {
+  async send(file, thumbnail, onProgress = () => {}) {
     const settings = { ...this.store.data.paperless };
     if (!settings.enabled) {
       return { status: 'disabled', deleted: false };
@@ -122,6 +146,7 @@ module.exports = class Paperless {
     const key = crypto.createHash('sha256').update(`${settings.url}\n${file.fullname}\n${fingerprint}`).digest('hex');
     let record = this.store.data.transfers[key];
     if (!record) {
+      onProgress('uploading');
       const taskId = await this.request(settings, 'api/documents/post_document/', file.fullname);
       if (typeof taskId !== 'string' || !/^[a-f0-9-]{32,36}$/i.test(taskId)) {
         throw new Error('Paperless did not return a task ID; local file retained');
@@ -130,17 +155,22 @@ module.exports = class Paperless {
       this.store.data.transfers[key] = record;
       this.store.save();
     }
+    onProgress('paperless_processing');
     const deadline = Date.now() + this.pollTimeout;
     while (!record.documentId && Date.now() < deadline) {
       const result = await this.request(settings, `api/tasks/?task_id=${encodeURIComponent(record.taskId)}`);
       const tasks = Array.isArray(result) ? result : result.results;
       const task = Array.isArray(tasks) && tasks.find(t => t.task_id === record.taskId);
-      if (task && task.status === 'SUCCESS' && /^\d+$/.test(String(task.related_document))) {
-        record.documentId = Number(task.related_document);
+      const state = task && String(task.status).toUpperCase();
+      const documentId = task && (task.related_document
+        || task.result_data && task.result_data.document_id
+        || Array.isArray(task.related_document_ids) && task.related_document_ids[0]);
+      if (state === 'SUCCESS' && /^[1-9]\d*$/.test(String(documentId))) {
+        record.documentId = Number(documentId);
         this.store.save();
         break;
       }
-      if (task && ['FAILURE', 'REVOKED'].includes(task.status)) {
+      if (task && ['FAILURE', 'REVOKED'].includes(state)) {
         // Keep the task ID: a retry must never silently create another document.
         record.failed = true;
         this.store.save();
@@ -151,6 +181,7 @@ module.exports = class Paperless {
     if (!record.documentId) {
       return { status: 'pending', taskId: record.taskId, deleted: false };
     }
+    onProgress('cleanup');
     let deleted = false;
     // Recheck the setting and file identity before a destructive operation.
     if (settings.deleteAfterTransfer && this.store.data.paperless.deleteAfterTransfer
@@ -164,6 +195,8 @@ module.exports = class Paperless {
         }
       }
     }
+    record.deleted = deleted;
+    this.store.save();
     return { status: 'success', documentId: record.documentId, deleted };
   }
 };

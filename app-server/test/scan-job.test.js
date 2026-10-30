@@ -85,3 +85,39 @@ describe('Shared scan button workflow', () => {
     await job.start(input);
   });
 });
+
+describe('Dashboard asynchronous progress polling', () => {
+  it('tracks job milestones and ends the spinner after Paperless completion', async () => {
+    const seen = [];
+    let poll = 0;
+    const states = ['scanning', 'processing', 'uploading', 'paperless_processing', 'completed'];
+    const job = new ScanJob({ pollInterval: 1, fetch: async (url, options) => {
+      if (options.method === 'POST') {
+        assert.strictEqual(JSON.parse(options.body).async, true);
+        return { jobId: 'qa-job' };
+      }
+      const stage = states[poll++];
+      seen.push(stage);
+      return { stage, done: stage === 'completed', result: stage === 'completed'
+        ? { file: { name: 'scan.pdf' }, paperless: { status: 'success' } } : null };
+    } });
+    await job.start(input);
+    assert.deepStrictEqual(seen, states);
+    assert.strictEqual(job.stage, 'completed');
+    assert.strictEqual(job.busy, false);
+  });
+  it('releases busy state when Paperless continues processing in the background', async () => {
+    const job = new ScanJob({ fetch: async (url, options) => options.method === 'POST' ? { jobId: 'qa' }
+      : { stage: 'pending', done: true, result: { file: { name: 'scan.pdf' }, paperless: { status: 'pending' } } } });
+    await job.start(input);
+    assert.strictEqual(job.busy, false);
+    assert.strictEqual(job.stage, 'pending');
+  });
+  it('bounds a stalled status request and releases busy state', async () => {
+    const job = new ScanJob({ requestTimeout: 15, fetch: async (url, options) => options.method === 'POST'
+      ? { jobId: 'qa' } : new Promise(() => {}) });
+    await assert.rejects(job.start(input), /timed out/);
+    assert.strictEqual(job.busy, false);
+    assert.strictEqual(job.stage, 'failed');
+  });
+});

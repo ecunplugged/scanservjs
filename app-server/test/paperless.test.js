@@ -66,7 +66,16 @@ describe('Paperless integration', () => {
         if (mode === 'change-file') {
           fs.appendFileSync(file.fullname, 'replacement');
         }
-        res.end(JSON.stringify(mode === 'paginated' ? { results: [task] } : [task]));
+        if (mode === 'v10') {
+          task = { task_id: taskId, status: 'success', related_document_ids: [42], result_data: { document_id: 42 } };
+        }
+        if (mode === 'v10-result-only') {
+          task = { task_id: taskId, status: 'success', result_data: { document_id: 42 } };
+        }
+        if (mode === 'v10-failure') {
+          task = { task_id: taskId, status: 'failure' };
+        }
+        res.end(JSON.stringify(['paginated', 'v10', 'v10-result-only', 'v10-failure'].includes(mode) ? { results: [task] } : [task]));
       }
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -172,6 +181,24 @@ describe('Paperless integration', () => {
     assert.strictEqual((await paperless.transfer(file)).deleted, false);
     assert(file.exists());
   });
+  for (const version of ['v10', 'v10-result-only']) {
+    it(`recognizes ${version} success and safely deletes after confirmation`, async () => {
+      mode = version;
+      store.data.paperless.deleteAfterTransfer = true;
+      const stages = [];
+      const result = await paperless.transfer(file, thumbnail, stage => stages.push(stage));
+      assert.strictEqual(result.status, 'success');
+      assert.strictEqual(result.deleted, true);
+      assert(!file.exists());
+      assert.deepStrictEqual(stages, ['uploading', 'paperless_processing', 'cleanup']);
+    });
+  }
+  it('recognizes a lowercase v10 failure without deleting files', async () => {
+    mode = 'v10-failure';
+    store.data.paperless.deleteAfterTransfer = true;
+    await assert.rejects(paperless.transfer(file));
+    assert(file.exists());
+  });
   it('does not contact Paperless when disabled', async () => {
     store.data.paperless.enabled = false;
     assert.strictEqual((await paperless.transfer(file)).status, 'disabled');
@@ -188,5 +215,32 @@ describe('Paperless integration', () => {
     store.data.paperless.url = 'http://127.0.0.1:1';
     await assert.rejects(paperless.transfer(file));
     assert(file.exists());
+  });
+});
+
+describe('Paperless request deadline', () => {
+  it('rejects an unfinished response even after headers arrived and releases the active transfer', async function () {
+    this.timeout(3000);
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'scanservjs-stalled-'));
+    const server = http.createServer((req, res) => {
+      req.resume();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.write('"1234'); // Never finish the response body.
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const store = new JobStore(path.join(directory, 'settings.json'));
+      store.configure({ enabled: true, url: `http://127.0.0.1:${server.address().port}`, token: 'qa', deleteAfterTransfer: true });
+      const filename = path.join(directory, 'scan.pdf');
+      fs.writeFileSync(filename, '%PDF test');
+      const client = new Paperless(store, { requestTimeout: 30 });
+      await assert.rejects(client.transfer(FileInfo.create(filename)), /timed out/);
+      assert.strictEqual(client.active.size, 0);
+      assert(fs.existsSync(filename));
+    } finally {
+      server.closeAllConnections();
+      await new Promise(resolve => server.close(resolve));
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
   });
 });

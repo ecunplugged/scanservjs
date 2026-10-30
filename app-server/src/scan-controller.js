@@ -66,7 +66,7 @@ class ScanController {
     try {
       await Process.spawn(scanimageCommand.scan(this.request));
     } catch (error) {
-      throw new Error(`Scanning failed: ${error.stderr && error.stderr.trim() || error.message}`);
+      throw new Error(`Scanning failed: ${error.stderr && error.stderr.trim() || error.message}`, { cause: error });
     }
   }
 
@@ -174,7 +174,8 @@ class ScanController {
    * @param {ScanRequest} req
    * @returns {Promise.<ScanResponse>}
    */
-  async execute(req) {
+  async execute(req, options = {}) {
+    const progress = options.onProgress || (() => {});
     await this.init(req);
 
     if (this.firstPass) {
@@ -182,17 +183,22 @@ class ScanController {
     }
 
     if (this.performScan) {
+      progress('scanning');
       await this.scan();
     }
 
     if (this.finishUp) {
+      progress('processing');
       const file = await this.finish();
       await userOptions.afterScan(file);
+      if (options.deferPaperless) {
+        return { file };
+      }
       const services = require('./job-services');
       let paperless;
       try {
         paperless = await services.paperless.transfer(file,
-          FileInfo.unsafe(config.thumbnailDirectory, file.name));
+          FileInfo.unsafe(config.thumbnailDirectory, file.name), progress);
       } catch (error) {
         paperless = { status: 'error', message: error.message, deleted: false };
       }
@@ -215,8 +221,8 @@ module.exports = {
    * @param {ScanRequest} req
    * @returns {Promise.<ScanResponse>}
    */
-  async run(req) {
+  async run(req, options) {
     const scan = new ScanController();
-    return await scan.execute(req);
+    return await scan.execute(req, options);
   }
 };

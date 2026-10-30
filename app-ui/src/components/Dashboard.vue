@@ -14,7 +14,19 @@
       {{ loadError }} <v-btn variant="text" @click="load">{{ $t('dashboard.retry') }}</v-btn>
     </v-alert>
     <v-progress-linear v-if="loading" indeterminate class="mb-4" />
-    <v-alert v-if="scanJob.result" type="success" class="mb-6">
+    <v-card v-if="scanJob.stage !== 'idle'" class="pa-5 mb-6 progress-card" variant="outlined" role="status" aria-live="polite">
+      <h2 class="text-h6 mb-2">{{ $t('progress.title') }}</h2>
+      <div class="progress-status">{{ $t(`progress.${scanJob.stage}`) }}</div>
+      <p v-if="scanJob.busy" class="mt-2">{{ $t('progress.elapsed', [elapsed]) }}</p>
+      <v-progress-linear v-if="scanJob.busy && scanJob.stage !== 'awaiting_pages'" indeterminate color="primary" class="mt-4" />
+      <ol class="progress-steps mt-4">
+        <li v-for="(step, index) in steps" :key="step" :class="{ active: stepIndex === index, done: stepIndex > index }">
+          <span>{{ stepIndex > index ? '✓' : index + 1 }}</span> {{ $t(`progress.${step}`) }}
+        </li>
+      </ol>
+      <p v-if="scanJob.stage === 'pending'" class="mt-4">{{ $t('progress.pending-help') }}</p>
+    </v-card>
+    <v-alert v-if="scanJob.result" :type="resultType" class="mb-6">
       {{ $t('dashboard.completed') }} {{ scanJob.result.file.name }}
       <div v-if="scanJob.result.paperless && scanJob.result.paperless.status !== 'disabled'" class="mt-2">
         {{ scanJob.result.paperless.message || $t(`paperless.${scanJob.result.paperless.status}`) }}
@@ -52,11 +64,41 @@ export default {
   name: 'Dashboard',
   inject: ['scanJob'],
   data() {
-    return { presets: [], loading: false, loadError: '', mdiScanner,
+    return { now: Date.now(), ticker: null, presets: [], loading: false, loadError: '', mdiScanner,
       colors: ['primary', 'teal', 'deep-purple', 'indigo', 'blue-grey', 'green'] };
+  },
+  computed: {
+    steps() {
+      return this.scanJob.result && this.scanJob.result.paperless && this.scanJob.result.paperless.status === 'disabled'
+        ? ['scanning', 'processing'] : ['scanning', 'processing', 'uploading', 'paperless_processing'];
+    },
+    stepIndex() {
+      if (this.scanJob.stage === 'completed') {
+        return this.steps.length;
+      }
+      if (['pending', 'cleanup'].includes(this.scanJob.stage)) {
+        return 3;
+      }
+      if (['transfer_error', 'failed'].includes(this.scanJob.stage)) {
+        return this.scanJob.lastWorkStage === 'cleanup' ? 3 : this.steps.indexOf(this.scanJob.lastWorkStage);
+      }
+      return this.steps.indexOf(this.scanJob.stage);
+    },
+    elapsed() {
+      return Math.max(0, Math.floor((this.now - this.scanJob.stageStartedAt) / 1000));
+    },
+    resultType() {
+      return this.scanJob.stage === 'transfer_error' ? 'error' : this.scanJob.stage === 'pending' ? 'warning' : 'success';
+    }
   },
   mounted() {
     this.load();
+    this.ticker = setInterval(() => {
+      this.now = Date.now();
+    }, 1000);
+  },
+  beforeUnmount() {
+    clearInterval(this.ticker);
   },
   methods: {
     async load() {
@@ -85,6 +127,12 @@ export default {
 </script>
 
 <style scoped>
+.progress-status { font-size: 1.35rem; font-weight: 600; }
+.progress-steps { display: flex; flex-wrap: wrap; gap: 20px; list-style: none; padding: 0; }
+.progress-steps li { opacity: 0.55; }
+.progress-steps li.active { opacity: 1; font-weight: 700; }
+.progress-steps li.done { opacity: 1; color: rgb(var(--v-theme-success)); }
+.progress-steps li span { margin-right: 5px; }
 .dashboard { max-width: 1440px; padding: 16px 8px; }
 .scan-tile { min-height: 240px; border-radius: 18px; text-transform: none; letter-spacing: normal; }
 .scan-tile :deep(.v-btn__content) { width: 100%; white-space: normal; }

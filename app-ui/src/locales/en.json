@@ -262,5 +262,23 @@
     "password": "Password",
     "password-saved": "Password saved. Leave blank to keep it.",
     "description": "Login is off by default. Set a username and password to enable it when needed."
+  },
+  "progress": {
+    "title": "Progress",
+    "idle": "Ready",
+    "queued": "Starting job",
+    "scanning": "Scanning documents",
+    "processing": "Processing scan / creating PDF",
+    "uploading": "Uploading to Paperless",
+    "paperless_processing": "Paperless is importing the document",
+    "cleanup": "Import confirmed – finishing locally",
+    "completed": "Job completed",
+    "pending": "Uploaded – Paperless import continues in the background",
+    "transfer_error": "Scan complete, Paperless transfer failed",
+    "awaiting_pages": "Waiting for more pages or completion",
+    "failed": "Job failed",
+    "cancelled": "Job cancelled",
+    "elapsed": "{0} seconds in this step",
+    "pending-help": "The local file is retained. You can scan again. The server continues checking the import; use Paperless in the file list to check it again."
   }
 }

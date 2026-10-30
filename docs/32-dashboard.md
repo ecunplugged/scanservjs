@@ -17,6 +17,50 @@ abschließen oder abbrechen. Das gilt auch bei einem Seitenwechsel innerhalb der
 Anwendung. Fehler werden als Meldung angezeigt; sie gelten nicht als erfolgreich
 abgeschlossener Scan, und die Oberfläche gibt den nächsten Versuch wieder frei.
 
+## Fortschritt und Paperless-Abschluss
+
+Auf dem Dashboard wird der jeweils echte Bearbeitungsschritt angezeigt:
+
+1. Dokumente scannen.
+2. Bilder verarbeiten und PDF erstellen.
+3. Datei an Paperless übertragen.
+4. Import durch Paperless abwarten.
+
+Die Anzeige enthält die Zeit im aktuellen Schritt. Abgeschlossene Schritte sind
+mit Häkchen markiert. Eine Prozentangabe wird nicht geschätzt, weil der Scanner
+und Paperless keine verlässliche Gesamtdauer liefern.
+
+Die Oberfläche fragt den Auftragsstatus einmal pro Sekunde ab. Die Übertragung
+läuft serverseitig außerhalb der Scanner-Sperre. Nach bestätigtem Import endet
+der Busy-Zustand; die optionale lokale Löschung bleibt an die Bestätigung gekoppelt.
+Unterstützt werden sowohl die ältere Paperless-Antwort (`SUCCESS`,
+`related_document`) als auch die aktuelle Antwort (`success`,
+`result_data.document_id` bzw. `related_document_ids`).
+
+Jede Paperless-Anfrage hat eine feste Gesamtzeitbegrenzung von 30 Sekunden,
+auch wenn bereits Header oder Teile der Antwort eingetroffen sind. Nach rund
+zwei Minuten Importprüfung wird ein noch nicht fertiger Import als
+**im Hintergrund laufend** angezeigt; eine gerade laufende HTTP-Anfrage kann
+noch bis zu 30 Sekunden benötigen. Die lokale Datei bleibt erhalten und der
+Busy-Zustand endet. Der vorhandene Hintergrunddienst prüft den Import weiter.
+Über **Dateien → Paperless** lässt sich der Status erneut prüfen, ohne einen
+bekannten Auftrag nochmals hochzuladen.
+
+Die Browser-Statusabfrage ist ebenfalls zeitlich begrenzt. Bei einem
+Verbindungsabbruch kann der Server weiterarbeiten; vor einem erneuten Scan die
+Dateiliste bzw. Paperless prüfen. Statusobjekte werden im Arbeitsspeicher
+gehalten und sind nach einem Serverneustart nicht mehr verfügbar. Gespeicherte
+Paperless-Task-IDs bleiben für die Wiederaufnahme erhalten.
+
+Für API-Clients bleibt das bisherige synchrone Verhalten erhalten. Mit
+`async: true` an `POST /api/v1/scan` bzw. `POST /api/v1/presets/:id/scan` wird
+sofort HTTP 202 mit `jobId` geliefert. `GET /api/v1/scan-jobs/:id` liefert
+`stage`, `done`, `result` und `error`. Bei manuellen Stapeln enthält `result`
+weiterhin `index` und gegebenenfalls `image`; nach Fertigstellung `file` und
+`paperless`.
+
+API-Grundlage: [Paperless-ngx REST API](https://docs.paperless-ngx.com/api/).
+
 ## Voreinstellungen verwalten
 
 Unter **Voreinstellungen** (`/#/presets`) stehen folgende Aktionen bereit:

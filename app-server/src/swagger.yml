@@ -1,4 +1,18 @@
 paths:
+  /api/v1/scan-jobs/{id}:
+    get:
+      summary: Read live scan and Paperless progress
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: jobId, stage, done, startedAt, updatedAt, result and error
+        404:
+          description: Job expired or server restarted
   /api/v1/authentication:
     get:
       summary: Read optional login setup (off by default)
@@ -711,6 +725,10 @@ definitions:
 
   ScanRequest:
     properties:
+      async:
+        type: boolean
+        default: false
+        description: Return HTTP 202 with jobId; poll /api/v1/scan-jobs/{id} for progress
       params:
         $ref: '#/definitions/ScanRequestParameters'
 

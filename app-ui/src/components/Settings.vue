@@ -118,12 +118,12 @@ const storage = Storage.instance();
 
 export default {
   name: 'Settings',
-  inject: ['requestMask'],
 
   components: {
     SettingsSection,
     SettingsItem
   },
+  inject: ['requestMask'],
 
   emits: ['mask', 'notify'],
 

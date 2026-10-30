@@ -61,6 +61,17 @@ function formatForLog(req) {
 const { store, paperless } = require('./job-services');
 const EndpointSpecs = [
   {
+    method: 'get', path: '/api/v1/scan-jobs/:id',
+    callback: async (req, res) => {
+      const job = api.scanJobs().get(req.params.id);
+      res.set('Cache-Control', 'no-store');
+      if (!job) {
+        res.status(404).send({ message: 'Scan job no longer available' }); return;
+      }
+      res.send(job);
+    }
+  },
+  {
     method: 'get', path: '/api/v1/authentication',
     callback: async (req, res) => res.send(store.authentication(config.users))
   },
@@ -76,7 +87,12 @@ const EndpointSpecs = [
         res.status(404).send({ message: 'Preset no longer exists' });
         return;
       }
-      res.send(await api.scan({ ...preset.request, params: { ...preset.request.params }, index: 1 }));
+      const request = { ...preset.request, params: { ...preset.request.params }, index: 1 };
+      if (req.body && req.body.async === true) {
+        res.status(202).send(api.scanJobs().start(request));
+      } else {
+        res.send(await api.scan(request));
+      }
     }
   },
   {
@@ -89,7 +105,9 @@ const EndpointSpecs = [
   },
   {
     method: 'delete', path: '/api/v1/presets/:id',
-    callback: async (req, res) => { store.deletePreset(req.params.id); res.send({}); }
+    callback: async (req, res) => {
+      store.deletePreset(req.params.id); res.send({});
+    }
   },
   {
     method: 'get', path: '/api/v1/paperless',
@@ -194,7 +212,13 @@ const EndpointSpecs = [
   {
     method: 'post',
     path: '/api/v1/scan',
-    callback: async (req, res) => res.send(await api.scan(req.body))
+    callback: async (req, res) => {
+      if (req.body && req.body.async === true) {
+        res.status(202).send(api.scanJobs().start(req.body));
+      } else {
+        res.send(await api.scan(req.body));
+      }
+    }
   },
   {
     method: 'get',

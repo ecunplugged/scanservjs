@@ -168,8 +168,21 @@ module.exports = new class Api {
     }
   }
 
-  async scan(req) {
-    return this.withScanner(() => ScanController.run(req));
+  async scan(req, options) {
+    return this.withScanner(() => ScanController.run(req, options));
+  }
+
+  scanJobs() {
+    if (!this.jobs) {
+      const ScanJobs = require('./classes/scan-jobs');
+      const services = require('./job-services');
+      this.jobs = new ScanJobs({
+        scan: (req, onProgress) => this.scan(req, { onProgress, deferPaperless: true }),
+        transfer: (file, onProgress) => services.paperless.transfer(file,
+          FileInfo.unsafe(config.thumbnailDirectory, file.name), onProgress)
+      });
+    }
+    return this.jobs;
   }
 
   /**
