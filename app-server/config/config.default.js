@@ -19,7 +19,7 @@ module.exports = {
     // config.port = 8080;
     // config.devices = [];
     // fi-7260 ADF A4 acquisition margins in mm; set both to 0 for exact A4.
-    // config.adfA4Margins = { right: 15, bottom: 20 };
+    // config.adfA4Margins = { right: 15, bottom: 10 };
     // config.ocrLanguage = 'eng';
     // config.log.level = 'DEBUG';
     // config.scanimage = '/usr/bin/scanimage';

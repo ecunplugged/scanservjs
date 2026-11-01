@@ -191,13 +191,13 @@ describe('Fujitsu A4 media geometry', () => {
   });
 
   for (const source of ['ADF Front', 'ADF Back', 'ADF Duplex']) {
-    it(`extends existing A4 presets for ${source} to the driver's width limit and 317 mm height`, () => {
+    it(`extends existing A4 presets for ${source} to the driver's width limit and 307 mm height`, () => {
       const params = { source, pageWidth: 210, pageHeight: 297, width: 210, height: 297, left: 0, top: 0 };
-      const request = makeRequest('scanimage-a12-adf.txt', params, { right: 15, bottom: 20 });
+      const request = makeRequest('scanimage-a12-adf.txt', params, config.adfA4Margins);
       assert.strictEqual(request.params.width, 224.8);
       assert.strictEqual(request.params.pageWidth, 224.8);
-      assert.strictEqual(request.params.height, 317);
-      assert.strictEqual(request.params.pageHeight, 317);
+      assert.strictEqual(request.params.height, 307);
+      assert.strictEqual(request.params.pageHeight, 307);
       assert.strictEqual(request.params.ald, 'no');
       assert.strictEqual(params.width, 210);
       assert.strictEqual(params.height, 297);
@@ -205,8 +205,8 @@ describe('Fujitsu A4 media geometry', () => {
       const command = new Command(config);
       command.scanimage._version = '1.0.31';
       const text = command.scan(request);
-      assert(text.includes('--page-width 224.8 --page-height 317 -l 0 -t 0 -x 224.8 -y 317'));
-      const repeated = makeRequest('scanimage-a12-adf.txt', request.params, { right: 15, bottom: 20 });
+      assert(text.includes('--page-width 224.8 --page-height 307 -l 0 -t 0 -x 224.8 -y 307'));
+      const repeated = makeRequest('scanimage-a12-adf.txt', request.params, config.adfA4Margins);
       assert.strictEqual(repeated.params.width, request.params.width);
       assert.strictEqual(repeated.params.height, request.params.height);
     });

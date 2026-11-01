@@ -148,9 +148,10 @@ gescannt. Das gilt für ADF Front, Back und Duplex sowie für bereits gespeicher
 Voreinstellungen und manuelle Scans. Die gespeicherte A4-Auswahl bleibt dabei
 erhalten; die Erweiterung erfolgt erst beim Erstellen des Scanner-Auftrags.
 
-Angefordert werden 225 × 317 mm, begrenzt auf die vom Treiber gemeldeten
+Ab Version 3.3.5 beträgt die Längenreserve 10 mm statt zuvor 20 mm.
+Angefordert werden 225 × 307 mm, begrenzt auf die vom Treiber gemeldeten
 Mediengrenzen. Der hinterlegte fi-7260-Treiberauszug erlaubt höchstens
-224,846 mm Breite (in scanservjs auf 224,8 mm abgerundet): daraus ergeben sich rund **224,8 × 317 mm** statt
+224,846 mm Breite (in scanservjs auf 224,8 mm abgerundet): daraus ergeben sich rund **224,8 × 307 mm** statt
 210 × 297 mm. Das PDF kann dadurch größer sein als DIN A4 und zusätzliche
 Hintergrundränder enthalten. Diese werden nicht nachträglich abgeschnitten.
 
@@ -169,7 +170,7 @@ Bei Bedarf lassen sich die Reserven in der vorhandenen Funktion `afterConfig`
 von `/etc/scanservjs/config.local.js` anpassen:
 
 ```js
-config.adfA4Margins = { right: 15, bottom: 20 }; // Millimeter
+config.adfA4Margins = { right: 15, bottom: 10 }; // Millimeter
 ```
 
 Beide Werte auf `0` schalten die Erweiterung aus. Anschließend den Dienst mit
