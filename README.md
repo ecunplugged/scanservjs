@@ -52,7 +52,7 @@ complicated installation.
 
 * Dashboard als Startseite mit großen Direkt-Scan-Buttons für jede gespeicherte Voreinstellung
 * Voreinstellungen speichern, abrufen, bearbeiten, umbenennen und löschen
-* A4 im Hoch- und Querformat; Korrekturen für die ADF-Formaterkennung
+* A4 im Hoch- und Querformat; Korrekturen für die ADF-Formaterkennung und automatische Randreserve beim fi-7260-ADF
 * Paperless-ngx-Anbindung mit bestätigtem Import und optionalem lokalem Löschen
 * Zwei dauerhaft gespeicherte Dashboard-Schalter: Paperless-Übertragung und automatisches Löschen separat steuern; wahlweise ausschließlich lokal speichern oder eine lokale Kopie behalten
 * Fortschrittsanzeige für Scannen, Verarbeitung, Übertragung und Paperless-Import mit Zeit im aktuellen Schritt

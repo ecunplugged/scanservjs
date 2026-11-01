@@ -63,6 +63,7 @@
  * @property {string} version
  * @property {number} port
  * @property {number} timeout
+ * @property {{right: number, bottom: number}} adfA4Margins
  * @property {string[]} devices
  * @property {boolean} devicesFind
  * @property {string} ocrLanguage

@@ -25,6 +25,8 @@ module.exports = class Config {
       host: '::',
       timeout: 600000,
       devices: [],
+      // Extra acquisition area for full A4 portrait scans on Fujitsu fi-7260 ADF.
+      adfA4Margins: { right: 15, bottom: 20 },
       ocrLanguage: 'eng',
       log: {
         level: 'INFO',

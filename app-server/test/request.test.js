@@ -168,9 +168,9 @@ describe('Request', () => {
 });
 
 describe('Fujitsu A4 media geometry', () => {
-  const makeRequest = (fixture, params) => {
+  const makeRequest = (fixture, params, margins = { right: 0, bottom: 0 }) => {
     const device = Device.from(FileInfo.create(`test/resource/${fixture}`).toText());
-    const context = new Context(config, [device], new UserOptions());
+    const context = new Context({ ...config, adfA4Margins: margins }, [device], new UserOptions());
     return new Request(context, { params: { deviceId: device.id, ...params } });
   };
 
@@ -188,6 +188,58 @@ describe('Fujitsu A4 media geometry', () => {
     assert(text.includes('--page-height 297'));
     assert(text.includes('-y 297'));
     assert(text.indexOf('--page-height') < text.indexOf('-y'));
+  });
+
+  for (const source of ['ADF Front', 'ADF Back', 'ADF Duplex']) {
+    it(`extends existing A4 presets for ${source} to the driver's width limit and 317 mm height`, () => {
+      const params = { source, pageWidth: 210, pageHeight: 297, width: 210, height: 297, left: 0, top: 0 };
+      const request = makeRequest('scanimage-a12-adf.txt', params, { right: 15, bottom: 20 });
+      assert.strictEqual(request.params.width, 224.8);
+      assert.strictEqual(request.params.pageWidth, 224.8);
+      assert.strictEqual(request.params.height, 317);
+      assert.strictEqual(request.params.pageHeight, 317);
+      assert.strictEqual(request.params.ald, 'no');
+      assert.strictEqual(params.width, 210);
+      assert.strictEqual(params.height, 297);
+      const Command = require('../src/classes/scanimage-command');
+      const command = new Command(config);
+      command.scanimage._version = '1.0.31';
+      const text = command.scan(request);
+      assert(text.includes('--page-width 224.8 --page-height 317 -l 0 -t 0 -x 224.8 -y 317'));
+      const repeated = makeRequest('scanimage-a12-adf.txt', request.params, { right: 15, bottom: 20 });
+      assert.strictEqual(repeated.params.width, request.params.width);
+      assert.strictEqual(repeated.params.height, request.params.height);
+    });
+  }
+
+  it('uses configured margins and applies the bottom margin without a width margin', () => {
+    const request = makeRequest('scanimage-a12-adf.txt', {
+      source: 'ADF Front', width: 210, height: 297
+    }, { right: 0, bottom: 20 });
+    assert.strictEqual(request.params.width, 210);
+    assert.strictEqual(request.params.height, 317);
+  });
+
+  it('does not enlarge a crop, another format, the flatbed, or another scanner', () => {
+    const margins = { right: 15, bottom: 20 };
+    for (const params of [
+      { source: 'ADF Front', width: 100, height: 150 },
+      { source: 'ADF Front', width: 210, height: 297, left: 5 },
+      { source: 'ADF Front', width: 210, height: 297, top: 5 },
+    ]) {
+      const request = makeRequest('scanimage-a12-adf.txt', { pageWidth: 210, pageHeight: 297, ...params }, margins);
+      assert.strictEqual(request.params.width, params.width);
+      assert.strictEqual(request.params.height, params.height);
+    }
+    const flatbed = makeRequest('scanimage-a12-flatbed.txt', { source: 'Flatbed', width: 210, height: 297 }, margins);
+    assert(flatbed.params.width <= 210);
+    assert(flatbed.params.height <= 297);
+    const device = Device.from(FileInfo.create('test/resource/scanimage-a12-adf.txt').toText());
+    device.id = 'fujitsu:fi-7160:example';
+    const context = new Context({ ...config, adfA4Margins: margins }, [device], new UserOptions());
+    const request = new Request(context, { params: { width: 210, height: 297, pageWidth: 210, pageHeight: 297 } });
+    assert.strictEqual(request.params.width, 210);
+    assert.strictEqual(request.params.height, 297);
   });
 
   it('still bounds ADF dimensions by the requested media', () => {

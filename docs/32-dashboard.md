@@ -139,3 +139,43 @@ Neue API-Endpunkte:
 
 `POST /api/v1/presets` akzeptiert außerdem optional `id`, um einen bestehenden
 Eintrag einschließlich seines Namens zu ändern. Ein Namenskonflikt wird abgewiesen.
+
+## A4-Randreserve beim fi-7260-ADF
+
+Ab Version 3.3.4 werden vollständige A4-Hochformat-Aufträge (210 × 297 mm,
+Start links/oben bei 0) am Fujitsu fi-7260 automatisch mit einer Randreserve
+gescannt. Das gilt für ADF Front, Back und Duplex sowie für bereits gespeicherte
+Voreinstellungen und manuelle Scans. Die gespeicherte A4-Auswahl bleibt dabei
+erhalten; die Erweiterung erfolgt erst beim Erstellen des Scanner-Auftrags.
+
+Angefordert werden 225 × 317 mm, begrenzt auf die vom Treiber gemeldeten
+Mediengrenzen. Der hinterlegte fi-7260-Treiberauszug erlaubt höchstens
+224,846 mm Breite (in scanservjs auf 224,8 mm abgerundet): daraus ergeben sich rund **224,8 × 317 mm** statt
+210 × 297 mm. Das PDF kann dadurch größer sein als DIN A4 und zusätzliche
+Hintergrundränder enthalten. Diese werden nicht nachträglich abgeschnitten.
+
+**Wichtig:** Der Fujitsu-Treiber zentriert das Medium im ADF. Die zusätzliche
+Breite verteilt sich deshalb auf beide Seiten; 15 mm ausschließlich rechts
+lassen sich bei einer insgesamt nur rund 225 mm breiten Scanfläche nicht
+zusichern. Die zusätzliche Länge wird unten angefordert. Falls vorhanden, wird
+die automatische Papierende-Erkennung (`--ald`) für diesen Auftrag deaktiviert,
+damit sie die Längenreserve nicht vorzeitig abschneidet. Die tatsächlich
+aufgenommene Fläche muss einmal am physischen Scanner geprüft werden.
+
+Flachbett, andere Scanner, andere Papierformate und bewusst gewählte Ausschnitte
+mit versetztem Startpunkt behalten ihr bisheriges Verhalten.
+
+Bei Bedarf lassen sich die Reserven in der vorhandenen Funktion `afterConfig`
+von `/etc/scanservjs/config.local.js` anpassen:
+
+```js
+config.adfA4Margins = { right: 15, bottom: 20 }; // Millimeter
+```
+
+Beide Werte auf `0` schalten die Erweiterung aus. Anschließend den Dienst mit
+`sudo systemctl restart scanservjs` neu starten. Vorhandene Konfigurationen und
+Voreinstellungen müssen nicht ersetzt werden.
+
+Die Zentrierung über `--page-width` und `--page-height` ist in der
+[SANE-Fujitsu-Dokumentation](https://sane-project.gitlab.io/website/man/sane-fujitsu.5.html)
+beschrieben.

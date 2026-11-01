@@ -29,8 +29,9 @@ module.exports = class Context {
       throw new Error('userOptions is null or undefined');
     }
 
-    const defaultSettings = () => {
+    const defaultSettings = (device) => {
       return {
+        ...(/(?:^|:)fujitsu:fi-7260:/i.test(device.id) ? { adfA4Margins: config.adfA4Margins } : {}),
         batchMode: {
           options: config.batchModes,
           default: config.batchModes[0]
@@ -48,14 +49,14 @@ module.exports = class Context {
 
     // Add defaults for all existing devices - useful for user configuration
     devices.forEach(device => {
-      device.settings = defaultSettings();
+      device.settings = defaultSettings(device);
     });
 
     userOptions.afterDevices(devices);
 
     // Re-add defaults in case user adds new devices
     devices.forEach(device => {
-      device.settings = objectMerger.deepMerge({}, defaultSettings(), device.settings);
+      device.settings = objectMerger.deepMerge({}, defaultSettings(device), device.settings);
     });
 
     this.devices = devices;
