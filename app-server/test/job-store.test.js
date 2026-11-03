@@ -91,14 +91,39 @@ describe('Scan job settings', () => {
     assert.strictEqual(store.settings().deleteAfterTransfer, false);
   });
 
-  it('only enables deletion with Paperless on but permits turning deletion off after Paperless was disabled', () => {
+  it('turns deletion off together with Paperless and does not restore it when Paperless is enabled again', () => {
     assert.throws(() => store.configureFlags({ deleteAfterTransfer: true }), /Enable Paperless/);
     store.configure({ enabled: true, url: 'https://paperless.test', token: 'secret', deleteAfterTransfer: true });
     store.configureFlags({ enabled: false });
-    assert.strictEqual(store.settings().deleteAfterTransfer, true);
-    store.configureFlags({ deleteAfterTransfer: false });
     assert.strictEqual(store.settings().deleteAfterTransfer, false);
     assert.throws(() => store.configureFlags({ deleteAfterTransfer: true }), /Enable Paperless/);
+    store.configureFlags({ enabled: true });
+    assert.strictEqual(store.settings().deleteAfterTransfer, false);
+    assert.strictEqual(new JobStore(store.filename).settings().deleteAfterTransfer, false);
+  });
+
+  it('rolls back both switches together if disabling Paperless cannot be saved', () => {
+    store.configure({ enabled: true, url: 'https://paperless.test', token: 'secret', deleteAfterTransfer: true });
+    store.save = () => {
+      throw new Error('Disk full');
+    };
+    assert.throws(() => store.configureFlags({ enabled: false }), /Disk full/);
+    assert.strictEqual(store.settings().enabled, true);
+    assert.strictEqual(store.settings().deleteAfterTransfer, true);
+  });
+
+  it('normalizes full setup saves and migrates disabled legacy settings without altering other data', () => {
+    store.configure({ enabled: true, url: 'https://paperless.test', token: 'secret', deleteAfterTransfer: true });
+    store.putPreset({ name: 'Invoices', request });
+    store.configure({ enabled: false, url: 'https://paperless.test', token: '', deleteAfterTransfer: true });
+    assert.strictEqual(store.settings().deleteAfterTransfer, false);
+    store.data.paperless.deleteAfterTransfer = true; // Legacy 3.4.0 setting.
+    store.save();
+    const restored = new JobStore(store.filename);
+    assert.strictEqual(restored.settings().deleteAfterTransfer, false);
+    assert.strictEqual(restored.data.paperless.token, 'secret');
+    assert.strictEqual(restored.data.presets[0].name, 'Invoices');
+    assert.strictEqual(JSON.parse(fs.readFileSync(store.filename)).paperless.deleteAfterTransfer, false);
   });
 
   it('keeps only the five latest scans across restarts without exposing paths or fingerprints', async () => {

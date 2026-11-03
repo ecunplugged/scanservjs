@@ -15,6 +15,10 @@ module.exports = class JobStore {
     if (!this.data.authentication) {
       this.data.authentication = { enabled: authenticationEnabled, username: 'scanner', salt: '', hash: '' };
     }
+    if (!this.data.paperless.enabled && this.data.paperless.deleteAfterTransfer) {
+      this.data.paperless.deleteAfterTransfer = false;
+      this.save();
+    }
   }
 
   save() {
@@ -113,6 +117,9 @@ module.exports = class JobStore {
         || typeof input[key] !== 'boolean')) {
       throw new Error('Invalid Paperless switches');
     }
+    if (input.deleteAfterTransfer === true && !(input.enabled === undefined ? this.data.paperless.enabled : input.enabled)) {
+      throw new Error('Enable Paperless before enabling automatic deletion');
+    }
     return this.configure({ ...this.data.paperless, ...input });
   }
 
@@ -120,9 +127,6 @@ module.exports = class JobStore {
     if (typeof input.enabled !== 'boolean' || typeof input.deleteAfterTransfer !== 'boolean'
       || typeof input.url !== 'string' || typeof input.token !== 'string') {
       throw new Error('Invalid Paperless settings');
-    }
-    if (input.deleteAfterTransfer && !this.data.paperless.deleteAfterTransfer && !input.enabled) {
-      throw new Error('Enable Paperless before enabling automatic deletion');
     }
     const url = input.url.trim().replace(/\/+$/, '');
     if (url) {
@@ -136,7 +140,7 @@ module.exports = class JobStore {
       throw new Error('Paperless URL and API token are required');
     }
     const previous = this.data.paperless;
-    this.data.paperless = { enabled: input.enabled, url, token, deleteAfterTransfer: input.deleteAfterTransfer };
+    this.data.paperless = { enabled: input.enabled, url, token, deleteAfterTransfer: input.enabled && input.deleteAfterTransfer };
     try {
       this.save();
     } catch (error) {

@@ -17,7 +17,7 @@
           <v-switch :model-value="paperless.deleteAfterTransfer" :label="$t('dashboard.delete-toggle')"
             :title="$t('dashboard.delete-help')"
             class="dashboard-switch" size="small" density="compact" color="primary" hide-details
-            :disabled="saving || scanJob.busy || (!paperless.enabled && !paperless.deleteAfterTransfer)" @update:model-value="saveFlag('deleteAfterTransfer', $event)" />
+            :disabled="saving || scanJob.busy || !paperless.enabled" @update:model-value="saveFlag('deleteAfterTransfer', $event)" />
         </div>
         <v-btn to="/scan" variant="text">{{ $t('dashboard.manual') }}</v-btn>
       </div>

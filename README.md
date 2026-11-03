@@ -62,7 +62,7 @@ complicated installation.
 * Optionale Anmeldung, standardmäßig ausgeschaltet
 * Debian-Installations- und Update-Skript mit Abhängigkeiten, systemd-Autostart und Erhalt vorhandener Einstellungen und Scans
 
-[Release 3.4.0 mit Debian-Paket und Installationsskript](https://github.com/ecunplugged/scanservjs/releases/tag/v3.4.0)
+[Release 3.4.1 mit Debian-Paket und Installationsskript](https://github.com/ecunplugged/scanservjs/releases/tag/v3.4.1)
 
 ### Weitere Funktionen aus dem Upstream
 

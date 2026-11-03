@@ -256,7 +256,8 @@ module.exports = class Paperless {
     onProgress('cleanup');
     let deleted = false;
     // Recheck the setting and file identity before a destructive operation.
-    if (this.store.data.paperless.deleteAfterTransfer && this.store.data.paperless.url === settings.url) {
+    if (this.store.data.paperless.enabled && this.store.data.paperless.deleteAfterTransfer
+      && this.store.data.paperless.url === settings.url) {
       const current = fs.statSync(file.fullname);
       if (current.ino === stat.ino && current.size === stat.size && current.mtimeMs === stat.mtimeMs) {
         fs.unlinkSync(file.fullname);

@@ -63,6 +63,9 @@ describe('Paperless integration', () => {
         if (mode === 'disable-delete') {
           store.data.paperless.deleteAfterTransfer = false;
         }
+        if (mode === 'enable-delete') {
+          store.configureFlags({ deleteAfterTransfer: true });
+        }
         if (mode === 'enable-delete-disable-paperless') {
           store.configureFlags({ deleteAfterTransfer: true });
           store.configureFlags({ enabled: false });
@@ -185,11 +188,16 @@ describe('Paperless integration', () => {
     assert.strictEqual((await paperless.transfer(file)).deleted, false);
     assert(file.exists());
   });
-  it('uses the current deletion switch even when upload started with deletion off and Paperless was then disabled', async () => {
+  it('keeps the file if Paperless is disabled during import, even when deletion was enabled', async () => {
     mode = 'enable-delete-disable-paperless';
+    assert.strictEqual((await paperless.transfer(file, thumbnail)).deleted, false);
+    assert(file.exists());
+    assert.strictEqual(uploads, 1);
+  });
+  it('still checks the current deletion setting rather than the upload-start snapshot', async () => {
+    mode = 'enable-delete';
     assert.strictEqual((await paperless.transfer(file, thumbnail)).deleted, true);
     assert(!file.exists());
-    assert.strictEqual(uploads, 1);
   });
   it('keeps the file when deletion is switched off after repeated Paperless toggles', async () => {
     store.configureFlags({ deleteAfterTransfer: true });
@@ -197,7 +205,7 @@ describe('Paperless integration', () => {
     assert.strictEqual((await paperless.transfer(file, thumbnail)).deleted, false);
     assert(file.exists());
   });
-  it('resumes accepted imports and rechecks deletion after restart with Paperless off', async () => {
+  it('resumes accepted imports after restart with Paperless off and retains the local file', async () => {
     mode = 'pending';
     await paperless.transfer(file, thumbnail);
     store.configureFlags({ deleteAfterTransfer: true });
@@ -205,7 +213,7 @@ describe('Paperless integration', () => {
     mode = 'success';
     const restored = new Paperless(new JobStore(store.filename), { pollInterval: 2, pollTimeout: 15 });
     await restored.resume(directory, directory);
-    assert(!file.exists());
+    assert(file.exists());
     assert.strictEqual(uploads, 1);
   });
   it('records timestamps and document ID and preserves status after renaming without another upload', async () => {

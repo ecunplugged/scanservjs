@@ -28,8 +28,9 @@ Ab Version 3.3.3 enthält das Dashboard zwei kompakte Schalter neben **Voreinste
 Die Auswahl wird sofort serverseitig gespeichert, gilt auch für manuelle Scans
 und bleibt nach Neustarts und Updates erhalten. URL und API-Token werden weiterhin
 unter **Einstellungen** eingerichtet. Ohne diese Angaben lässt sich die Übertragung
-nicht aktivieren. Bei ausgeschalteter Übertragung lässt sich der Löschschalter nicht neu aktivieren.
-Ein bereits aktiver Löschschalter lässt sich auch dann ausschalten.
+nicht aktivieren. Ab Version 3.4.1 schaltet **Paperless aus** automatisch auch **autom. löschen**
+aus. Erneutes Einschalten von Paperless lässt das Löschen ausgeschaltet; es muss
+bei Bedarf ausdrücklich wieder aktiviert werden.
 
 Während eines laufenden Dashboard-Auftrags sind die Schalter gesperrt. Bereits
 an Paperless übergebene Dokumente werden durch das Abschalten nicht zurückgerufen.
@@ -203,10 +204,10 @@ Umbenennen über die Dateiliste erhält Status und Zuordnung; während einer
 laufenden Übertragung wird das Umbenennen abgewiesen.
 
 **Löschprüfung:** Unmittelbar vor dem Löschen zählt ausschließlich der aktuelle
-Schalter **autom. löschen**, unabhängig von seinem Wert beim Upload-Start und
-vom inzwischen geänderten Schalter **Paperless**. Weiterhin müssen ein
-bestätigter Import, dieselbe Paperless-Zieladresse und die unveränderte lokale
-Datei vorliegen. Bereits abgeschlossene und behaltene Dateien werden durch ein
+Schalter **autom. löschen**, unabhängig von seinem Wert beim Upload-Start. Ab Version 3.4.1 müssen außerdem **Paperless** und
+**autom. löschen** weiterhin eingeschaltet sein. Ausschalten von Paperless
+deaktiviert das Löschen atomar. Ein bestätigter Import, dieselbe Paperless-Zieladresse
+und die unveränderte lokale Datei sind weiterhin erforderlich. Bereits abgeschlossene und behaltene Dateien werden durch ein
 späteres Einschalten nicht rückwirkend automatisch gelöscht.
 
 Die aktive Scan-Kachel pulsiert. Der Rahmen beginnt links unten und läuft im
@@ -223,3 +224,12 @@ oder Prüfsummen. `GET /api/v1/files` enthält pro Datei das Objekt `paperless`
 mit `status`, `uploadedAt`, `completedAt` und `documentId`, soweit vorhanden.
 
 ![Dateiliste mit Paperless-Status, Zeitstempeln und Dokument-ID aus der Testinstallation](paperless-status.png)
+
+## Schalterkopplung ab Version 3.4.1
+
+Die Kopplung wird serverseitig für Dashboard und Setup erzwungen und dauerhaft
+gespeichert. Auch alte gespeicherte Kombinationen mit Paperless aus und Löschen
+an werden beim Start auf beide aus korrigiert. Bereits angenommene Importe
+werden weiterhin geprüft; bei abgeschalteter Übertragung bleibt die lokale
+Datei nach erfolgreichem Import erhalten. Reine lokale Scans werden nie durch
+diese Automatik gelöscht.
