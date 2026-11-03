@@ -121,3 +121,23 @@ describe('Dashboard asynchronous progress polling', () => {
     assert.strictEqual(job.stage, 'failed');
   });
 });
+
+describe('Scan history sources and tile progress', () => {
+  it('distinguishes simplex, duplex, collation, flatbed and unknown sources', () => {
+    const source = require('../src/classes/scan-source');
+    const constants = require('../src/constants');
+    assert.strictEqual(source({ source: 'ADF Front' }), 'adf_simplex');
+    assert.strictEqual(source({ source: 'ADF Back' }), 'adf_simplex');
+    assert.strictEqual(source({ source: 'ADF Duplex' }), 'adf_duplex');
+    assert.strictEqual(source({ source: 'ADF', adfMode: 'Duplex' }), 'adf_duplex');
+    assert.strictEqual(source({ source: 'ADF Front' }, constants.BATCH_COLLATE_STANDARD), 'adf_duplex');
+    assert.strictEqual(source({ source: 'Flatbed' }), 'flatbed');
+    assert.strictEqual(source({}), 'unknown');
+  });
+  it('advances one quarter at each transfer milestone and completes local scans in two steps', async () => {
+    const { tileProgress } = await import('../../app-ui/src/classes/scan-display.js');
+    assert.deepStrictEqual(['scanning', 'processing', 'uploading', 'paperless_processing', 'cleanup'].map(stage => tileProgress(stage, true)), [0, 25, 50, 75, 100]);
+    assert.strictEqual(tileProgress('processing', false), 50);
+    assert.strictEqual(tileProgress('completed', false), 100);
+  });
+});

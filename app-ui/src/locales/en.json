@@ -288,5 +288,21 @@
     "cancelled": "Job cancelled",
     "elapsed": "{0} seconds in this step",
     "pending-help": "The local file is retained. You can scan again. The server continues checking the import; use Paperless in the file list to check it again."
+  },
+  "history": {
+    "title": "Last 5 scans",
+    "empty": "No scans recorded yet.",
+    "pages": "{0} pages",
+    "flatbed": "Flatbed",
+    "adf_simplex": "ADF Simplex",
+    "adf_duplex": "ADF Duplex",
+    "unknown": "Unknown source",
+    "not_sent": "Not sent",
+    "success": "Transferred · import confirmed",
+    "pending": "Sent · import pending",
+    "failed": "Import failed",
+    "error": "Transfer failed",
+    "uploaded-at": "Sent:",
+    "imported-at": "Imported:"
   }
 }

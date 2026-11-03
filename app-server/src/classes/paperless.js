@@ -11,6 +11,7 @@ module.exports = class Paperless {
     this.pollInterval = options.pollInterval || 2000;
     this.pollTimeout = options.pollTimeout || 120000;
     this.active = new Map();
+    this.statusCache = new Map();
     this.requestTimeout = options.requestTimeout || 30000;
   }
 
@@ -89,19 +90,82 @@ module.exports = class Paperless {
     });
   }
 
+  async fingerprint(filename) {
+    const digest = crypto.createHash('sha256');
+    for await (const chunk of fs.createReadStream(filename)) {
+      digest.update(chunk);
+    }
+    return digest.digest('hex');
+  }
+
+  status(record) {
+    if (!record) {
+      return { status: 'not_sent' };
+    }
+    return { status: record.documentId ? 'success' : record.failed ? 'failed' : 'pending',
+      uploadedAt: record.uploadedAt || null, completedAt: record.completedAt || null,
+      documentId: record.documentId || null, deleted: Boolean(record.deleted) };
+  }
+
+  async fileStatus(file) {
+    const records = Object.values(this.store.data.transfers).filter(record => record.filename === file.fullname);
+    if (!records.length) {
+      return this.status(null);
+    }
+    const stat = fs.statSync(file.fullname);
+    const signature = `${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
+    let cached = this.statusCache.get(file.fullname);
+    if (!cached || cached.signature !== signature) {
+      cached = { signature, fingerprint: await this.fingerprint(file.fullname) };
+      if (this.statusCache.size >= 500) {
+        this.statusCache.clear();
+      }
+      this.statusCache.set(file.fullname, cached);
+    }
+    const fingerprint = cached.fingerprint;
+    return this.status(records.filter(record => record.fingerprint === fingerprint)
+      .sort((a, b) => String(b.completedAt || b.uploadedAt || '').localeCompare(String(a.completedAt || a.uploadedAt || '')))[0]);
+  }
+
+  rename(filename, destination) {
+    if (this.active.has(filename)) {
+      throw new Error('Wait for the Paperless transfer before renaming this file');
+    }
+    for (const [key, record] of Object.entries(this.store.data.transfers)) {
+      if (record.filename === filename) {
+        record.filename = destination;
+        const next = crypto.createHash('sha256').update(`${record.url}\n${destination}\n${record.fingerprint}`).digest('hex');
+        delete this.store.data.transfers[key];
+        this.store.data.transfers[next] = record;
+      }
+    }
+    for (const scan of this.store.data.history) {
+      if (scan.filename === filename) {
+        scan.filename = destination;
+        scan.name = path.basename(destination);
+      }
+    }
+    this.store.save();
+  }
+
   transfer(file, thumbnail, onProgress = () => {}) {
     if (this.active.has(file.fullname)) {
       return this.active.get(file.fullname);
     }
-    const task = this.send(file, thumbnail, onProgress).finally(() => this.active.delete(file.fullname));
+    const task = this.send(file, thumbnail, onProgress).catch(async error => {
+      const scan = this.store.data.history.find(item => item.filename === file.fullname);
+      if (scan && !['success', 'failed'].includes(scan.paperless.status) && file.exists()
+        && scan.fingerprint === await this.fingerprint(file.fullname)) {
+        scan.paperless = { ...scan.paperless, status: 'error' };
+        this.store.save();
+      }
+      throw error;
+    }).finally(() => this.active.delete(file.fullname));
     this.active.set(file.fullname, task);
     return task;
   }
 
   async resume(outputDirectory, thumbnailDirectory) {
-    if (!this.store.data.paperless.enabled) {
-      return;
-    }
     const FileInfo = require('./file-info');
     for (const record of Object.values(this.store.data.transfers)) {
       if (record.documentId || record.failed || record.url !== this.store.data.paperless.url
@@ -128,7 +192,8 @@ module.exports = class Paperless {
 
   async send(file, thumbnail, onProgress = () => {}) {
     const settings = { ...this.store.data.paperless };
-    if (!settings.enabled) {
+    if (!settings.enabled && !Object.values(this.store.data.transfers).some(record => record.filename === file.fullname
+      && record.url === settings.url && !record.documentId && !record.failed)) {
       return { status: 'disabled', deleted: false };
     }
     if (!['.pdf', '.png', '.jpg', '.jpeg', '.tif', '.tiff', '.txt'].includes(file.extension.toLowerCase())) {
@@ -146,13 +211,17 @@ module.exports = class Paperless {
     const key = crypto.createHash('sha256').update(`${settings.url}\n${file.fullname}\n${fingerprint}`).digest('hex');
     let record = this.store.data.transfers[key];
     if (!record) {
+      if (!settings.enabled) {
+        return { status: 'disabled', deleted: false };
+      }
       onProgress('uploading');
       const taskId = await this.request(settings, 'api/documents/post_document/', file.fullname);
       if (typeof taskId !== 'string' || !/^[a-f0-9-]{32,36}$/i.test(taskId)) {
         throw new Error('Paperless did not return a task ID; local file retained');
       }
-      record = { taskId, filename: file.fullname, url: settings.url, fingerprint };
+      record = { taskId, filename: file.fullname, url: settings.url, fingerprint, uploadedAt: new Date().toISOString() };
       this.store.data.transfers[key] = record;
+      this.store.scanTransfer(file.fullname, fingerprint, this.status(record));
       this.store.save();
     }
     onProgress('paperless_processing');
@@ -167,12 +236,15 @@ module.exports = class Paperless {
         || Array.isArray(task.related_document_ids) && task.related_document_ids[0]);
       if (state === 'SUCCESS' && /^[1-9]\d*$/.test(String(documentId))) {
         record.documentId = Number(documentId);
+        record.completedAt = new Date().toISOString();
+        this.store.scanTransfer(file.fullname, fingerprint, this.status(record));
         this.store.save();
         break;
       }
       if (task && ['FAILURE', 'REVOKED'].includes(state)) {
         // Keep the task ID: a retry must never silently create another document.
         record.failed = true;
+        this.store.scanTransfer(file.fullname, fingerprint, this.status(record));
         this.store.save();
         throw new Error('Paperless import failed; local file retained. Check the task in Paperless.');
       }
@@ -184,8 +256,7 @@ module.exports = class Paperless {
     onProgress('cleanup');
     let deleted = false;
     // Recheck the setting and file identity before a destructive operation.
-    if (settings.deleteAfterTransfer && this.store.data.paperless.deleteAfterTransfer
-      && this.store.data.paperless.enabled && this.store.data.paperless.url === settings.url) {
+    if (this.store.data.paperless.deleteAfterTransfer && this.store.data.paperless.url === settings.url) {
       const current = fs.statSync(file.fullname);
       if (current.ino === stat.ino && current.size === stat.size && current.mtimeMs === stat.mtimeMs) {
         fs.unlinkSync(file.fullname);
@@ -196,7 +267,8 @@ module.exports = class Paperless {
       }
     }
     record.deleted = deleted;
+    this.store.scanTransfer(file.fullname, fingerprint, this.status(record));
     this.store.save();
-    return { status: 'success', documentId: record.documentId, deleted };
+    return this.status(record);
   }
 };

@@ -22,6 +22,21 @@ module.exports = new class Api {
     files = files
       .filter(file => !file.isDirectory)
       .sort((f1, f2) => f2.lastModified - f1.lastModified);
+    const { paperless } = require('./job-services');
+    const available = [];
+    for (const file of files) {
+      try {
+        file.paperless = await paperless.fileStatus(file);
+        if (file.exists()) {
+          available.push(file);
+        }
+      } catch (error) {
+        if (error.code !== 'ENOENT') {
+          throw error;
+        }
+      }
+    }
+    files = available;
     log.trace(LogFormatter.format().full(files));
     return files;
   }

@@ -253,5 +253,21 @@
     "cancelled": "Auftrag abgebrochen",
     "elapsed": "Seit {0} Sekunden in diesem Schritt",
     "pending-help": "Die lokale Datei bleibt erhalten. Du kannst wieder scannen. Der Import wird serverseitig weiter geprüft; bei Bedarf lässt sich der Status über Paperless in der Dateiliste erneut prüfen."
+  },
+  "history": {
+    "title": "Letzte 5 Scans",
+    "empty": "Noch keine Scans aufgezeichnet.",
+    "pages": "{0} Seiten",
+    "flatbed": "Flatbed",
+    "adf_simplex": "ADF Simplex",
+    "adf_duplex": "ADF Duplex",
+    "unknown": "Quelle unbekannt",
+    "not_sent": "Nicht übertragen",
+    "success": "Übertragen · Import bestätigt",
+    "pending": "Gesendet · Import offen",
+    "failed": "Import fehlgeschlagen",
+    "error": "Übertragung fehlgeschlagen",
+    "uploaded-at": "Gesendet:",
+    "imported-at": "Importiert:"
   }
 }

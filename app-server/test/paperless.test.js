@@ -63,6 +63,16 @@ describe('Paperless integration', () => {
         if (mode === 'disable-delete') {
           store.data.paperless.deleteAfterTransfer = false;
         }
+        if (mode === 'enable-delete-disable-paperless') {
+          store.configureFlags({ deleteAfterTransfer: true });
+          store.configureFlags({ enabled: false });
+        }
+        if (mode === 'toggle-then-keep') {
+          store.configureFlags({ enabled: false });
+          store.configureFlags({ enabled: true });
+          store.configureFlags({ deleteAfterTransfer: false });
+          store.configureFlags({ enabled: false });
+        }
         if (mode === 'change-file') {
           fs.appendFileSync(file.fullname, 'replacement');
         }
@@ -174,6 +184,72 @@ describe('Paperless integration', () => {
     store.data.paperless.deleteAfterTransfer = true;
     assert.strictEqual((await paperless.transfer(file)).deleted, false);
     assert(file.exists());
+  });
+  it('uses the current deletion switch even when upload started with deletion off and Paperless was then disabled', async () => {
+    mode = 'enable-delete-disable-paperless';
+    assert.strictEqual((await paperless.transfer(file, thumbnail)).deleted, true);
+    assert(!file.exists());
+    assert.strictEqual(uploads, 1);
+  });
+  it('keeps the file when deletion is switched off after repeated Paperless toggles', async () => {
+    store.configureFlags({ deleteAfterTransfer: true });
+    mode = 'toggle-then-keep';
+    assert.strictEqual((await paperless.transfer(file, thumbnail)).deleted, false);
+    assert(file.exists());
+  });
+  it('resumes accepted imports and rechecks deletion after restart with Paperless off', async () => {
+    mode = 'pending';
+    await paperless.transfer(file, thumbnail);
+    store.configureFlags({ deleteAfterTransfer: true });
+    store.configureFlags({ enabled: false });
+    mode = 'success';
+    const restored = new Paperless(new JobStore(store.filename), { pollInterval: 2, pollTimeout: 15 });
+    await restored.resume(directory, directory);
+    assert(!file.exists());
+    assert.strictEqual(uploads, 1);
+  });
+  it('records timestamps and document ID and preserves status after renaming without another upload', async () => {
+    await store.addScan(file, { pageCount: 2, source: 'adf_duplex' });
+    await paperless.transfer(file);
+    const status = await paperless.fileStatus(file);
+    assert.strictEqual(status.documentId, 42);
+    assert(!Number.isNaN(Date.parse(status.uploadedAt)));
+    assert(!Number.isNaN(Date.parse(status.completedAt)));
+    assert.strictEqual(store.history()[0].paperless.documentId, 42);
+    const renamed = await file.rename('renamed.pdf');
+    paperless.rename(file.fullname, renamed.fullname);
+    assert.deepStrictEqual(await paperless.fileStatus(renamed), status);
+    await paperless.transfer(renamed);
+    assert.strictEqual(uploads, 1);
+    assert.strictEqual(store.history()[0].name, 'renamed.pdf');
+    fs.appendFileSync(renamed.fullname, 'replacement');
+    assert.strictEqual((await paperless.fileStatus(renamed)).status, 'not_sent');
+  });
+  it('records history for scans deleted after import and does not invent legacy timestamps', async () => {
+    await store.addScan(file, { pageCount: 4, source: 'adf_duplex' });
+    store.configureFlags({ deleteAfterTransfer: true });
+    await paperless.transfer(file, thumbnail);
+    const history = new JobStore(store.filename).history();
+    assert.strictEqual(history[0].paperless.deleted, true);
+    assert.strictEqual(history[0].pageCount, 4);
+    assert.strictEqual(paperless.status({ documentId: 42 }).completedAt, null);
+  });
+  it('shows pending and failed imports separately in history', async () => {
+    await store.addScan(file, { pageCount: 1, source: 'flatbed' });
+    mode = 'pending';
+    await paperless.transfer(file);
+    assert.strictEqual((await paperless.fileStatus(file)).status, 'pending');
+    mode = 'failure';
+    await assert.rejects(paperless.transfer(file));
+    assert.strictEqual((await paperless.fileStatus(file)).status, 'failed');
+    assert.strictEqual(store.history()[0].paperless.status, 'failed');
+  });
+  it('records upload errors in history without falsely marking the scan transferred', async () => {
+    await store.addScan(file, { pageCount: 1, source: 'flatbed' });
+    mode = 'http-error';
+    await assert.rejects(paperless.transfer(file));
+    assert.strictEqual(store.history()[0].paperless.status, 'error');
+    assert.strictEqual((await paperless.fileStatus(file)).status, 'not_sent');
   });
   it('does not delete a local file modified during the import', async () => {
     mode = 'change-file';

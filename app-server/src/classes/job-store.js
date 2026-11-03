@@ -11,6 +11,7 @@ module.exports = class JobStore {
     this.data = fs.existsSync(filename) ? JSON.parse(fs.readFileSync(filename, 'utf8')) : {
       presets: [], paperless: { enabled: false, url: '', token: '', deleteAfterTransfer: false }, transfers: {}
     };
+    this.data.history = this.data.history || [];
     if (!this.data.authentication) {
       this.data.authentication = { enabled: authenticationEnabled, username: 'scanner', salt: '', hash: '' };
     }
@@ -21,6 +22,34 @@ module.exports = class JobStore {
     const temporary = `${this.filename}.tmp`;
     fs.writeFileSync(temporary, JSON.stringify(this.data, null, 2), { mode: 0o600 });
     fs.renameSync(temporary, this.filename);
+  }
+
+  async addScan(file, details) {
+    const digest = crypto.createHash('sha256');
+    for await (const chunk of fs.createReadStream(file.fullname)) {
+      digest.update(chunk);
+    }
+    this.data.history.unshift({ id: crypto.randomBytes(16).toString('hex'), filename: file.fullname,
+      name: file.name, size: file.size, fingerprint: digest.digest('hex'),
+      scannedAt: new Date().toISOString(), ...details, paperless: { status: 'not_sent' } });
+    this.data.history = this.data.history.slice(0, 5);
+    this.save();
+  }
+
+  scanTransfer(filename, fingerprint, status) {
+    const scan = this.data.history.find(item => item.filename === filename && item.fingerprint === fingerprint);
+    if (scan) {
+      scan.paperless = status;
+    }
+  }
+
+  history() {
+    return this.data.history.map(scan => {
+      const result = { ...scan };
+      delete result.filename;
+      delete result.fingerprint;
+      return result;
+    });
   }
 
   authentication(users = {}) {
@@ -91,6 +120,9 @@ module.exports = class JobStore {
     if (typeof input.enabled !== 'boolean' || typeof input.deleteAfterTransfer !== 'boolean'
       || typeof input.url !== 'string' || typeof input.token !== 'string') {
       throw new Error('Invalid Paperless settings');
+    }
+    if (input.deleteAfterTransfer && !this.data.paperless.deleteAfterTransfer && !input.enabled) {
+      throw new Error('Enable Paperless before enabling automatic deletion');
     }
     const url = input.url.trim().replace(/\/+$/, '');
     if (url) {

@@ -1,11 +1,12 @@
 <template>
   <div class="dashboard mx-auto">
-    <div class="d-flex align-center flex-wrap ga-3 mb-6">
+    <div class="dashboard-heading mb-6">
+      <div class="dashboard-heading-main">
       <div>
         <h1 class="text-h4 mb-2">{{ $t('dashboard.title') }}</h1>
         <p class="text-body-1 text-medium-emphasis">{{ $t('dashboard.description') }}</p>
       </div>
-      <v-spacer />
+
       <div class="dashboard-actions">
         <v-btn to="/presets" variant="outlined">{{ $t('dashboard.manage') }}</v-btn>
         <div v-if="paperless" class="dashboard-switches">
@@ -16,10 +17,12 @@
           <v-switch :model-value="paperless.deleteAfterTransfer" :label="$t('dashboard.delete-toggle')"
             :title="$t('dashboard.delete-help')"
             class="dashboard-switch" size="small" density="compact" color="primary" hide-details
-            :disabled="saving || scanJob.busy || !paperless.enabled" @update:model-value="saveFlag('deleteAfterTransfer', $event)" />
+            :disabled="saving || scanJob.busy || (!paperless.enabled && !paperless.deleteAfterTransfer)" @update:model-value="saveFlag('deleteAfterTransfer', $event)" />
         </div>
         <v-btn to="/scan" variant="text">{{ $t('dashboard.manual') }}</v-btn>
       </div>
+      </div>
+      <scan-history />
     </div>
 
     <v-alert v-if="loadError" type="error" class="mb-4">
@@ -30,7 +33,34 @@
       {{ $t('dashboard.configure-help') }} <router-link to="/settings">{{ $t('navigation.settings') }}</router-link>
     </v-alert>
     <v-alert v-if="saveError" type="error" class="mb-4">{{ saveError }}</v-alert>
-    <v-card v-if="scanJob.stage !== 'idle'" class="pa-5 mb-6 progress-card" variant="outlined" role="status" aria-live="polite">
+    <v-card v-if="!loading && !presets.length" variant="outlined" class="pa-8 text-center">
+      <h2 class="text-h6 mb-3">{{ $t('dashboard.empty') }}</h2>
+      <v-btn to="/presets/new" color="primary">{{ $t('jobs.new') }}</v-btn>
+    </v-card>
+
+    <v-row>
+      <v-col v-for="(preset, index) in presets" :key="preset.id" cols="12" sm="6" lg="4">
+        <v-btn class="scan-tile pa-6" block height="auto" variant="tonal"
+          :color="colors[index % colors.length]" :disabled="scanJob.busy || saving || loading"
+          :class="{ 'scan-tile--active': isActive(preset) }" @click="start(preset)">
+          <span v-if="isActive(preset)" class="tile-frame" role="progressbar" :style="{ '--scanserv-progress': tilePercent }"
+            :aria-label="$t('progress.title')" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="tilePercent">
+            <i class="edge-left" />
+            <i class="edge-top" />
+            <i class="edge-right" />
+            <i class="edge-bottom" />
+          </span>
+          <span class="d-flex flex-column align-start text-left w-100">
+            <v-progress-circular v-if="isActive(preset)" indeterminate size="36" width="3" class="mb-4" />
+            <v-icon v-else :icon="mdiScanner" size="36" class="mb-4" />
+            <span class="text-h5 font-weight-bold tile-title">{{ preset.name }}</span>
+            <span class="text-body-2 mt-3 tile-details">{{ details(preset) }}</span>
+            <span class="tile-action text-body-1 mt-5 font-weight-bold">{{ $t('dashboard.start') }} →</span>
+          </span>
+        </v-btn>
+      </v-col>
+    </v-row>
+    <v-card v-if="scanJob.stage !== 'idle'" class="pa-5 mt-6 progress-card" variant="outlined" role="status" aria-live="polite">
       <h2 class="text-h6 mb-2">{{ $t('progress.title') }}</h2>
       <div class="progress-status">{{ $t(`progress.${scanJob.stage}`) }}</div>
       <p v-if="scanJob.busy" class="mt-2">{{ $t('progress.elapsed', [elapsed]) }}</p>
@@ -42,48 +72,35 @@
       </ol>
       <p v-if="scanJob.stage === 'pending'" class="mt-4">{{ $t('progress.pending-help') }}</p>
     </v-card>
-    <v-alert v-if="scanJob.result" :type="resultType" class="mb-6">
+    <v-alert v-if="scanJob.result" :type="resultType" class="mt-6">
       {{ $t('dashboard.completed') }} {{ scanJob.result.file.name }}
       <div v-if="scanJob.result.paperless && scanJob.result.paperless.status !== 'disabled'" class="mt-2">
         {{ scanJob.result.paperless.message || $t(`paperless.${scanJob.result.paperless.status}`) }}
       </div>
       <v-btn to="/files" variant="text">{{ $t('navigation.files') }}</v-btn>
     </v-alert>
-    <v-card v-if="!loading && !presets.length" variant="outlined" class="pa-8 text-center">
-      <h2 class="text-h6 mb-3">{{ $t('dashboard.empty') }}</h2>
-      <v-btn to="/presets/new" color="primary">{{ $t('jobs.new') }}</v-btn>
-    </v-card>
-
-    <v-row>
-      <v-col v-for="(preset, index) in presets" :key="preset.id" cols="12" sm="6" lg="4">
-        <v-btn class="scan-tile pa-6" block height="auto" variant="tonal"
-          :color="colors[index % colors.length]" :disabled="scanJob.busy || saving || loading"
-          :loading="scanJob.busy && scanJob.presetId === preset.id" @click="start(preset)">
-          <span class="d-flex flex-column align-start text-left w-100">
-            <v-icon :icon="mdiScanner" size="36" class="mb-4" />
-            <span class="text-h5 font-weight-bold tile-title">{{ preset.name }}</span>
-            <span class="text-body-2 mt-3 tile-details">{{ details(preset) }}</span>
-            <span class="tile-action text-body-1 mt-5 font-weight-bold">{{ $t('dashboard.start') }} →</span>
-          </span>
-        </v-btn>
-      </v-col>
-    </v-row>
-  </div>
+</div>
 </template>
 
 <script>
 import { mdiScanner } from '@mdi/js';
 import Common from '../classes/common.js';
 import presetSummary from '../classes/preset-summary.js';
+import ScanHistory from './ScanHistory.vue';
+import { tileProgress } from '../classes/scan-display.js';
 
 export default {
   name: 'Dashboard',
+  components: { ScanHistory },
   inject: ['scanJob'],
   data() {
     return { now: Date.now(), ticker: null, paperless: null, saving: false, saveError: '', presets: [], loading: false, loadError: '', mdiScanner,
       colors: ['primary', 'teal', 'deep-purple', 'indigo', 'blue-grey', 'green'] };
   },
   computed: {
+    tilePercent() {
+      return tileProgress(this.scanJob.stage, Boolean(this.paperless && this.paperless.enabled));
+    },
     steps() {
       return (this.scanJob.result && this.scanJob.result.paperless && this.scanJob.result.paperless.status === 'disabled')
         || (!this.scanJob.result && this.paperless && !this.paperless.enabled)
@@ -118,6 +135,9 @@ export default {
     clearInterval(this.ticker);
   },
   methods: {
+    isActive(preset) {
+      return this.scanJob.busy && this.scanJob.presetId === preset.id;
+    },
     async load() {
       this.loading = true;
       this.loadError = '';
@@ -159,6 +179,19 @@ export default {
 </script>
 
 <style scoped>
+@property --scanserv-progress { syntax: '<number>'; inherits: true; initial-value: 0; }
+.dashboard-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 520px); align-items: start; gap: 32px; }
+.dashboard-heading-main > .dashboard-actions { margin-top: 18px; }
+.tile-frame { position: absolute; inset: 0; pointer-events: none; z-index: 2; border-radius: inherit; overflow: hidden; transition: --scanserv-progress 0.9s linear; }
+.tile-frame i { position: absolute; background: rgb(var(--v-theme-primary)); }
+.edge-left { left: 0; bottom: 0; width: 4px; height: 100%; transform-origin: bottom; transform: scaleY(clamp(0, calc(var(--scanserv-progress) * 0.04), 1)); }
+.edge-top { top: 0; left: 0; width: 100%; height: 4px; transform-origin: left; transform: scaleX(clamp(0, calc(var(--scanserv-progress) * 0.04 - 1), 1)); }
+.edge-right { right: 0; top: 0; width: 4px; height: 100%; transform-origin: top; transform: scaleY(clamp(0, calc(var(--scanserv-progress) * 0.04 - 2), 1)); }
+.edge-bottom { bottom: 0; right: 0; width: 100%; height: 4px; transform-origin: right; transform: scaleX(clamp(0, calc(var(--scanserv-progress) * 0.04 - 3), 1)); }
+.scan-tile--active { opacity: 1 !important; animation: scan-pulse 1.6s ease-in-out infinite; }
+@keyframes scan-pulse { 0%, 100% { box-shadow: 0 0 0 1px rgba(var(--v-theme-primary), 0.25); } 50% { box-shadow: 0 0 18px 3px rgba(var(--v-theme-primary), 0.5); } }
+@media (max-width: 960px) { .dashboard-heading { grid-template-columns: minmax(0, 1fr); gap: 20px; } }
+@media (prefers-reduced-motion: reduce) { .scan-tile--active { animation: none; } .tile-frame { transition: none; } }
 .dashboard-actions, .dashboard-switches { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
 .dashboard-switch { flex: 0 0 auto; }
 .dashboard-switch :deep(.v-label) { font-size: 0.875rem; white-space: nowrap; }

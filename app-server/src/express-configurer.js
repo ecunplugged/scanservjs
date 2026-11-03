@@ -61,6 +61,13 @@ function formatForLog(req) {
 const { store, paperless } = require('./job-services');
 const EndpointSpecs = [
   {
+    method: 'get', path: '/api/v1/scan-history',
+    callback: async (req, res) => {
+      res.set('Cache-Control', 'no-store');
+      res.send(store.history());
+    }
+  },
+  {
     method: 'get', path: '/api/v1/scan-jobs/:id',
     callback: async (req, res) => {
       const job = api.scanJobs().get(req.params.id);
@@ -185,7 +192,12 @@ const EndpointSpecs = [
     callback: async (req, res) => {
       const name = req.params[0];
       const newName = req.body.newName;
-      await FileInfo.unsafe(config.outputDirectory, name).rename(newName);
+      const file = FileInfo.unsafe(config.outputDirectory, name);
+      if (paperless.active.has(file.fullname)) {
+        res.status(409).send({ message: 'Wait for the Paperless transfer before renaming this file' }); return;
+      }
+      const renamed = await file.rename(newName);
+      paperless.rename(file.fullname, renamed.fullname);
       const thumbnail = FileInfo.unsafe(config.thumbnailDirectory, name);
       if (thumbnail.exists()) {
         thumbnail.rename(newName);

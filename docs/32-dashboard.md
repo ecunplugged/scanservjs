@@ -28,13 +28,13 @@ Ab Version 3.3.3 enthält das Dashboard zwei kompakte Schalter neben **Voreinste
 Die Auswahl wird sofort serverseitig gespeichert, gilt auch für manuelle Scans
 und bleibt nach Neustarts und Updates erhalten. URL und API-Token werden weiterhin
 unter **Einstellungen** eingerichtet. Ohne diese Angaben lässt sich die Übertragung
-nicht aktivieren. Bei ausgeschalteter Übertragung ist der Löschschalter deaktiviert;
-seine bisherige Auswahl bleibt für das spätere Einschalten erhalten.
+nicht aktivieren. Bei ausgeschalteter Übertragung lässt sich der Löschschalter nicht neu aktivieren.
+Ein bereits aktiver Löschschalter lässt sich auch dann ausschalten.
 
 Während eines laufenden Dashboard-Auftrags sind die Schalter gesperrt. Bereits
 an Paperless übergebene Dokumente werden durch das Abschalten nicht zurückgerufen.
-Noch offene Importprüfungen ruhen bei ausgeschalteter Übertragung und werden nach
-dem Einschalten wieder aufgenommen. Bereits gelöschte Dateien werden nicht wiederhergestellt.
+Bereits angenommene Importe werden ab Version 3.4.0 auch bei ausgeschalteter
+Übertragung weiter geprüft. Neue Dokumente werden dann nicht hochgeladen. Bereits gelöschte Dateien werden nicht wiederhergestellt.
 
 `PATCH /api/v1/paperless` akzeptiert `enabled` und/oder `deleteAfterTransfer`
 als Boolean. URL, Token und der jeweils andere Schalter bleiben unverändert.
@@ -180,3 +180,46 @@ Voreinstellungen müssen nicht ersetzt werden.
 Die Zentrierung über `--page-width` und `--page-height` ist in der
 [SANE-Fujitsu-Dokumentation](https://sane-project.gitlab.io/website/man/sane-fujitsu.5.html)
 beschrieben.
+
+## Scan-Historie und Dateistatus (ab Version 3.4.0)
+
+Rechts oben neben **Dashboard** stehen die letzten fünf fertig erzeugten Scans.
+Jeder Eintrag zeigt Datum und Uhrzeit der Dateierstellung, Anzahl der gescannten
+Seiten, **ADF Simplex**, **ADF Duplex** oder **Flatbed**, Dateigröße in MB
+(1 MB = 1.000.000 Byte) und den Paperless-Status. Gezählt werden gescannte
+Bildseiten, bei Duplex also Vorder- und Rückseiten einzeln. Die Historie bleibt
+bei Neustarts erhalten und enthält auch Scans, deren lokale Dateien nach dem
+Import gelöscht wurden. Für ältere Scans wird keine Historie erfunden; sie
+beginnt mit den nach dem Update erzeugten Dateien. Die Anzeige aktualisiert
+sich spätestens nach fünf Sekunden.
+
+Unter **Dateien** zeigt die Spalte **Paperless**, ob ein Dokument nicht gesendet,
+angenommen, erfolgreich importiert oder beim Import fehlgeschlagen ist. Hinzu
+kommen Zeitstempel für die Annahme des Uploads und den bestätigten Import sowie
+die Dokument-ID, sofern Paperless sie liefert. Bei älteren Übertragungen ohne
+gespeicherte Zeitstempel bleiben diese Angaben leer. Der Inhalt wird per
+Prüfsumme zugeordnet: Eine ersetzte Datei übernimmt keinen fremden Importstatus.
+Umbenennen über die Dateiliste erhält Status und Zuordnung; während einer
+laufenden Übertragung wird das Umbenennen abgewiesen.
+
+**Löschprüfung:** Unmittelbar vor dem Löschen zählt ausschließlich der aktuelle
+Schalter **autom. löschen**, unabhängig von seinem Wert beim Upload-Start und
+vom inzwischen geänderten Schalter **Paperless**. Weiterhin müssen ein
+bestätigter Import, dieselbe Paperless-Zieladresse und die unveränderte lokale
+Datei vorliegen. Bereits abgeschlossene und behaltene Dateien werden durch ein
+späteres Einschalten nicht rückwirkend automatisch gelöscht.
+
+Die aktive Scan-Kachel pulsiert. Der Rahmen beginnt links unten und läuft im
+Uhrzeigersinn: linke Kante, obere Kante, rechte Kante, untere Kante. Bei
+Paperless-Aufträgen entsprechen die abgeschlossenen Phasen **Scannen**,
+**Dateiverarbeitung**, **Übertragen** und **Import bestätigen** jeweils einer
+Kante (25 %). Bei lokalen Aufträgen entspricht jede der beiden Phasen zwei
+Kanten. Das sind Schrittmarken, keine geschätzten Seiten- oder Byteprozente.
+Bei aktivierter Betriebssystem-Einstellung für reduzierte Bewegung entfällt
+das Pulsieren; der Rahmen zeigt weiterhin den jeweiligen Schritt.
+
+`GET /api/v1/scan-history` liefert die fünf Historieneinträge ohne lokale Pfade
+oder Prüfsummen. `GET /api/v1/files` enthält pro Datei das Objekt `paperless`
+mit `status`, `uploadedAt`, `completedAt` und `documentId`, soweit vorhanden.
+
+![Dateiliste mit Paperless-Status, Zeitstempeln und Dokument-ID aus der Testinstallation](paperless-status.png)

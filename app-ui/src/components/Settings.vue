@@ -17,7 +17,7 @@
         <v-text-field v-model="paperless.url" :label="$t('paperless.url')" placeholder="https://paperless.example.com" />
         <v-text-field v-model="paperless.token" type="password" autocomplete="new-password"
           :label="$t('paperless.token')" :hint="paperless.tokenConfigured ? $t('paperless.token-saved') : ''" persistent-hint />
-        <v-switch v-model="paperless.deleteAfterTransfer" :label="$t('paperless.delete')" />
+        <v-switch v-model="paperless.deleteAfterTransfer" :disabled="!paperless.enabled && !paperless.deleteAfterTransfer" :label="$t('paperless.delete')" />
         <p class="mb-4">{{ $t('paperless.description') }}</p>
         <v-btn :disabled="!paperlessLoaded" @click="savePaperless">{{ $t('jobs.save') }}</v-btn>
       </v-card-text>

@@ -16,7 +16,7 @@ das Abhängigkeiten installiert und den systemd-Dienst einrichtet.
 
 ![Dashboard mit Scan-Voreinstellungen und Schaltern für Paperless-Übertragung und lokale Aufbewahrung](docs/dashboard.png)
 
-Dashboard mit kompakten Paperless-Schaltern; Screenshot aus einer Testinstallation mit Beispiel-Voreinstellungen.
+Dashboard ab Version 3.4.0 mit Scan-Historie und aktivem Fortschrittsrahmen; Screenshot aus einer Testinstallation mit SANE-Testscanner und simuliertem Paperless.
 
 Copyright 2016-2026 [Sam Strachan](https://github.com/sbs20)
 
@@ -55,12 +55,14 @@ complicated installation.
 * A4 im Hoch- und Querformat; Korrekturen für die ADF-Formaterkennung und automatische Randreserve beim fi-7260-ADF
 * Paperless-ngx-Anbindung mit bestätigtem Import und optionalem lokalem Löschen
 * Zwei dauerhaft gespeicherte Dashboard-Schalter: Paperless-Übertragung und automatisches Löschen separat steuern; wahlweise ausschließlich lokal speichern oder eine lokale Kopie behalten
-* Fortschrittsanzeige für Scannen, Verarbeitung, Übertragung und Paperless-Import mit Zeit im aktuellen Schritt
+* Fortschrittsanzeige mit Zeit im aktuellen Schritt und pulsierender Scan-Kachel mit umlaufendem Fortschrittsrahmen
+* Dauerhafte Historie der letzten fünf Scans mit Uhrzeit, Seitenzahl, Scanquelle, MB-Größe und Paperless-Status
+* Paperless-Status in der Dateiliste mit Übertragungs-/Importzeitstempel und Dokument-ID
 * Begrenzte Wartezeiten und Wiederaufnahme offener Paperless-Importprüfungen im Hintergrund
 * Optionale Anmeldung, standardmäßig ausgeschaltet
 * Debian-Installations- und Update-Skript mit Abhängigkeiten, systemd-Autostart und Erhalt vorhandener Einstellungen und Scans
 
-[Release 3.3.5 mit Debian-Paket und Installationsskript](https://github.com/ecunplugged/scanservjs/releases/tag/v3.3.5)
+[Release 3.4.0 mit Debian-Paket und Installationsskript](https://github.com/ecunplugged/scanservjs/releases/tag/v3.4.0)
 
 ### Weitere Funktionen aus dem Upstream
 

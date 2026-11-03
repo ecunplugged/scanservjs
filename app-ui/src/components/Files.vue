@@ -63,6 +63,18 @@
     <template #[`item.lastModified`]="{ item }">
       {{ $d(new Date(item.lastModified), 'long') }}
     </template>
+    <template #[`item.paperless`]="{ item }">
+      <div :class="{ 'text-success': item.paperless && item.paperless.status === 'success' }">
+        {{ $t(`history.${item.paperless ? item.paperless.status : 'not_sent'}`) }}
+      </div>
+      <div v-if="item.paperless && item.paperless.uploadedAt" class="text-caption">
+        {{ $t('history.uploaded-at') }} {{ dateTime(item.paperless.uploadedAt) }}
+      </div>
+      <div v-if="item.paperless && item.paperless.completedAt" class="text-caption">
+        {{ $t('history.imported-at') }} {{ dateTime(item.paperless.completedAt) }}
+      </div>
+      <div v-if="item.paperless && item.paperless.documentId" class="text-caption">Doc.-ID: {{ item.paperless.documentId }}</div>
+    </template>
     <template #[`item.actions`]="{ item }">
       <v-btn v-if="paperlessEnabled" size="small" variant="text" @click="sendPaperless(item)">Paperless</v-btn>
       <v-icon class="mr-2" :icon="mdiDownload" @click="open(item)" />
@@ -77,6 +89,7 @@
 
 <script>
 import Common from '../classes/common';
+import { dateTime } from '../classes/scan-display.js';
 import Storage from '../classes/storage';
 import { mdiDelete, mdiDotsVertical, mdiDownload, mdiPencil } from '@mdi/js';
 import { useDisplay } from 'vuetify';
@@ -118,6 +131,8 @@ export default {
         size: storage.settings.thumbnails.size
       },
       actions: [],
+      ticker: null,
+      listing: false,
       paperlessEnabled: false
     };
   },
@@ -150,6 +165,9 @@ export default {
           key: 'sizeString',
         },
         {
+          title: 'Paperless', key: 'paperless', sortable: false,
+        },
+        {
           title: this.$t('files.actions'),
           value: 'actions',
           sortable: false,
@@ -180,13 +198,19 @@ export default {
 
   mounted() {
     this.fileList();
+    this.ticker = setInterval(() => this.fileList(true), 5000);
     this.actionList();
     Common.fetch('api/v1/paperless').then(settings => {
       this.paperlessEnabled = settings.enabled;
     }).catch(error => this.$emit('notify', { type: 'e', message: error }));
   },
 
+  beforeUnmount() {
+    clearInterval(this.ticker);
+  },
+
   methods: {
+    dateTime,
     async sendPaperless(file) {
       this.requestMask(1);
       try {
@@ -211,14 +235,28 @@ export default {
       });
     },
 
-    fileList() {
-      this.requestMask(1);
-      Common.fetch('api/v1/files').then(files => {
+    fileList(silent = false) {
+      if (this.listing) {
+        return;
+      }
+      this.listing = true;
+      if (!silent) {
+        this.requestMask(1);
+      }
+      Common.fetch('api/v1/files', { cache: 'no-store' }).then(files => {
         this.files = files;
-        this.requestMask(-1);
+        if (!silent) {
+          this.requestMask(-1);
+        }
       }).catch(error => {
-        this.$emit('notify', {type: 'e', message: error});
-        this.requestMask(-1);
+        if (!silent) {
+          this.$emit('notify', {type: 'e', message: error});
+        }
+        if (!silent) {
+          this.requestMask(-1);
+        }
+      }).finally(() => {
+        this.listing = false;
       });
     },
 

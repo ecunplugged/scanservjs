@@ -81,6 +81,8 @@ class ScanController {
       throw new Error('No pages were scanned. Check the document feeder and scanner connection.');
     }
 
+    this.pageCount = files.length;
+
     // Update preview with the first image (pre filter)
     await this.updatePreview(files[0].name);
 
@@ -190,6 +192,8 @@ class ScanController {
     if (this.finishUp) {
       progress('processing');
       const file = await this.finish();
+      await require('./job-services').store.addScan(file, { pageCount: this.pageCount,
+        source: require('./classes/scan-source')(this.request.params, this.request.batch) });
       await userOptions.afterScan(file);
       if (options.deferPaperless) {
         return { file };

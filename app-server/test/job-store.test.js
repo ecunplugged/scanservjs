@@ -83,11 +83,37 @@ describe('Scan job settings', () => {
   });
 
   it('restores switches if saving fails', () => {
+    store.configure({ enabled: true, url: 'https://paperless.test', token: 'secret', deleteAfterTransfer: false });
     store.save = () => {
       throw new Error('Disk full');
     };
     assert.throws(() => store.configureFlags({ deleteAfterTransfer: true }));
     assert.strictEqual(store.settings().deleteAfterTransfer, false);
+  });
+
+  it('only enables deletion with Paperless on but permits turning deletion off after Paperless was disabled', () => {
+    assert.throws(() => store.configureFlags({ deleteAfterTransfer: true }), /Enable Paperless/);
+    store.configure({ enabled: true, url: 'https://paperless.test', token: 'secret', deleteAfterTransfer: true });
+    store.configureFlags({ enabled: false });
+    assert.strictEqual(store.settings().deleteAfterTransfer, true);
+    store.configureFlags({ deleteAfterTransfer: false });
+    assert.strictEqual(store.settings().deleteAfterTransfer, false);
+    assert.throws(() => store.configureFlags({ deleteAfterTransfer: true }), /Enable Paperless/);
+  });
+
+  it('keeps only the five latest scans across restarts without exposing paths or fingerprints', async () => {
+    const filename = path.join(directory, 'scan.pdf');
+    fs.writeFileSync(filename, 'test');
+    for (let i = 0; i < 7; i++) {
+      await store.addScan({ fullname: filename, name: `scan-${i}.pdf`, size: 4 }, { pageCount: i + 1, source: 'flatbed' });
+    }
+    const history = new JobStore(store.filename).history();
+    assert.strictEqual(history.length, 5);
+    assert.strictEqual(history[0].name, 'scan-6.pdf');
+    assert.strictEqual(history[0].pageCount, 7);
+    assert.strictEqual(history[4].name, 'scan-2.pdf');
+    assert(!JSON.stringify(history).includes('fingerprint'));
+    assert(!JSON.stringify(history).includes(directory));
   });
 
   it('rejects unsafe URLs, invalid settings and missing credentials', () => {
